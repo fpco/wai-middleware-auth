@@ -1,0 +1,74 @@
+name:                wai-middleware-auth
+version:             0.1.0.0
+synopsis:            Authentication middleware that secures WAI application
+description:         See README
+license:             MIT
+license-file:        LICENSE
+author:              Alexey Kuleshevich
+maintainer:          alexey@fpcomplete.com
+category:            Web
+build-type:          Simple
+extra-doc-files:     README.md CHANGELOG.md
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Network.Wai.Middleware.Auth
+                       Network.Wai.Github
+  other-modules:       Paths_wai_middleware_auth
+                       Network.Wai.AppRoot
+                       Network.Wai.ClientSession
+  build-depends:       aeson >= 1.0.2.1
+                     , base              >= 4.7 && < 5
+                     , base64-bytestring >= 1.0
+                     , binary            >= 0.7
+                     , blaze-builder     >= 0.3
+                     , bytestring        >= 0.10
+                     , case-insensitive  >= 1.2
+                     , clientsession     >= 0.9
+                     , containers        >= 0.5
+                     , cookie            >= 0.4
+                     , hoauth2
+                     , http-client       >= 0.4
+                     , http-client-tls   >= 0.2
+                     , http-conduit >= 2.2.3
+                     , http-types        >= 0.8
+                     , resourcet         >= 1.1
+                     , safe-exceptions
+                     , text              >= 1.1
+                     , time              >= 1.4
+                     , unix-compat       >= 0.4
+                     , unordered-containers
+                     , vault
+                     , wai               >= 3.0 && < 4
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+executable wai-auth
+  default-language:    Haskell2010
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  other-modules:       SimpleOptions
+                       Redirect2tls
+  build-depends:       base
+                     , bytestring
+                     , clientsession
+                     , gitrev                >= 1.0
+                     , http-client
+                     , http-client-tls
+                     , http-reverse-proxy    >= 0.4
+                     , http-types
+                     , optparse-applicative  >= 0.11 && < 0.14
+                     , template-haskell
+                     , text
+                     , transformers
+                     , unordered-containers
+                     , wai
+                     , wai-app-static
+                     , wai-extra
+                     , wai-middleware-auth
+                     , warp
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+
+source-repository head
+  type:     git
+  location: https://github.com/fpco/wai-middleware-crowd

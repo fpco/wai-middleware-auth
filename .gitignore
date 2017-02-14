@@ -17,3 +17,4 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
+client_session_key.aes
