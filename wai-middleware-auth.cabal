@@ -13,17 +13,25 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Network.Wai.Middleware.Auth
-                       Network.Wai.Github
+                       Network.Wai.Middleware.Auth.OAuth2
+                       Network.Wai.Middleware.Auth.Github
+                       Network.Wai.Middleware.Auth.Provider
+                       Network.Wai.Middleware.Redirect2tls
+                       Network.Wai.Auth.Executable
   other-modules:       Paths_wai_middleware_auth
-                       Network.Wai.AppRoot
-                       Network.Wai.ClientSession
+                       Network.Wai.Auth.AppRoot
+                       Network.Wai.Auth.Config
+                       Network.Wai.Auth.ClientSession
+                       Network.Wai.Auth.Tools
   build-depends:       aeson >= 1.0.2.1
                      , base              >= 4.7 && < 5
                      , base64-bytestring >= 1.0
                      , binary            >= 0.7
                      , blaze-builder     >= 0.3
+                     , blaze-html
                      , bytestring        >= 0.10
                      , case-insensitive  >= 1.2
+                     , cereal
                      , clientsession     >= 0.9
                      , containers        >= 0.5
                      , cookie            >= 0.4
@@ -31,24 +39,28 @@ library
                      , http-client       >= 0.4
                      , http-client-tls   >= 0.2
                      , http-conduit >= 2.2.3
+                     , http-reverse-proxy
                      , http-types        >= 0.8
                      , resourcet         >= 1.1
                      , safe-exceptions
+                     , shakespeare
                      , text              >= 1.1
                      , time              >= 1.4
                      , unix-compat       >= 0.4
                      , unordered-containers
                      , vault
                      , wai               >= 3.0 && < 4
+                     , wai-app-static
+                     , wai-extra
+                     , yaml
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:        -Wall
 
 executable wai-auth
   default-language:    Haskell2010
   hs-source-dirs:      app
   main-is:             Main.hs
-  other-modules:       SimpleOptions
-                       Redirect2tls
   build-depends:       base
                      , bytestring
                      , clientsession
@@ -57,17 +69,18 @@ executable wai-auth
                      , http-client-tls
                      , http-reverse-proxy    >= 0.4
                      , http-types
-                     , optparse-applicative  >= 0.11 && < 0.14
+                     , optparse-simple
                      , template-haskell
                      , text
                      , transformers
                      , unordered-containers
                      , wai
                      , wai-app-static
-                     , wai-extra
                      , wai-middleware-auth
                      , warp
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+                     , cereal
+                     , base64-bytestring
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
 
 source-repository head
   type:     git

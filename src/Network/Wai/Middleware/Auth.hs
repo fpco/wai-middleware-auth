@@ -1,13 +1,11 @@
+{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 module Network.Wai.Middleware.Auth
     ( -- * Settings
       AuthSettings
-    , AuthProvider(..)
-    , Provider (..)
     , defaultAuthSettings
     , setAuthKey
     , setAuthAppRootStatic
@@ -16,61 +14,47 @@ module Network.Wai.Middleware.Auth
     , setAuthSessionAge
     , setAuthPrefix
     , setAuthCookieName
+    , setAuthProviders
+    , setAuthProvidersTemplate
       -- * Middleware
     , mkAuthMiddleware
       -- * Helpers
     , smartAppRoot
     , waiMiddlewareAuthVersion
-    , getUserName
+    , getAuthUser
     ) where
 
-import           Blaze.ByteString.Builder  (fromByteString, toByteString)
-import           Data.Binary               (Binary)
-import qualified Data.ByteString           as S
-import qualified Data.ByteString.Lazy      as LS
-import qualified Data.HashMap.Strict       as HM
-import           Data.Monoid               ((<>))
-import qualified Data.Text                 as T
-import           Data.Text.Encoding        (decodeUtf8With, encodeUtf8)
-import           Data.Text.Encoding.Error  (lenientDecode)
-import qualified Data.Vault.Lazy           as Vault
-import           Data.Version              (Version)
-import           GHC.Generics              (Generic)
-import           Network.HTTP.Client       (Manager, newManager)
-import           Network.HTTP.Client.TLS   (tlsManagerSettings)
-import           Network.HTTP.Types        (Header, status200, status303,
-                                            status404, status501)
-import           Network.Wai               (Middleware, Request, Response,
-                                            pathInfo, rawPathInfo,
-                                            rawQueryString, responseBuilder,
-                                            responseLBS, vault)
-import           Network.Wai.AppRoot
-import           Network.Wai.ClientSession
-import qualified Paths_wai_middleware_auth as Paths
-import           System.IO.Unsafe          (unsafePerformIO)
-
-
-type Url = S.ByteString
-
-class AuthProvider ap where
-
-  getName :: ap -> T.Text
-
-  handleLogin
-    :: ap
-    -> Manager
-    -> Request -- ^ Request made to the login page
-    -> (Request -> IO T.Text) -- ^ Action that will return Application root path.
-    -> ([T.Text], [T.Text])
-    -- ^ Path split by @'\/'@ character and separated into prefix and suffix,
-    -- for eg: https:\/\/example.com\/auth\/providerName\/login\/complete
-    --
-    -- * Application root: @"https:\/\/example.com\/"@
-    -- * Prefix: @["auth", "providerName", "login"]@
-    -- * Suffix: @["complete"]@
-    --
-    -> (Identity -> IO Response) -- ^ Action to call on successfull login
-    -> IO Response -- ^ Url were user can supply credentials and login.
+import           Blaze.ByteString.Builder             (fromByteString)
+import           Data.Binary                          (Binary)
+import qualified Data.ByteString                      as S
+import           Data.ByteString.Builder              (Builder)
+import qualified Data.HashMap.Strict                  as HM
+import           Data.Monoid                          ((<>))
+import qualified Data.Text                            as T
+import           Data.Text.Encoding                   (decodeUtf8With,
+                                                       encodeUtf8)
+import           Data.Text.Encoding.Error             (lenientDecode)
+import qualified Data.Vault.Lazy                      as Vault
+import           Data.Version                         (Version)
+import           Foreign.C.Types                      (CTime (..))
+import           GHC.Generics                         (Generic)
+import           Network.HTTP.Client                  (Manager, newManager)
+import           Network.HTTP.Client.TLS              (tlsManagerSettings)
+import           Network.HTTP.Types                   (status200, status303,
+                                                       status404, status501)
+import           Network.Wai                          (Middleware, Request,
+                                                       pathInfo,
+                                                       rawPathInfo,
+                                                       rawQueryString,
+                                                       responseBuilder,
+                                                       responseLBS, vault)
+import           Network.Wai.Auth.AppRoot
+import           Network.Wai.Auth.ClientSession
+import           Network.Wai.Middleware.Auth.Provider
+import qualified Paths_wai_middleware_auth            as Paths
+import           System.IO.Unsafe                     (unsafePerformIO)
+import           System.PosixCompat.Time              (epochTime)
+import           Text.Hamlet                          (Render)
 
 
 
@@ -82,14 +66,17 @@ class AuthProvider ap where
 --
 -- Since 0.1.0
 data AuthSettings = AuthSettings
-  { asGetKey     :: IO Key
-  , asGetAppRoot :: IO (Request -> IO T.Text)
-  , asGetManager :: IO Manager -- ^ new TLS Manager
-  , asSessionAge :: Int -- ^ default: 3600 seconds (2 hours)
-  , asAuthPrefix :: T.Text -- ^ default: _auth_middleware
-  , asStateKey   :: S.ByteString -- ^ Cookie name, default: auth_state
+  { asGetKey            :: IO Key
+  , asGetAppRoot        :: Request -> IO T.Text
+  , asGetManager        :: IO Manager -- ^ new TLS Manager
+  , asSessionAge        :: Int -- ^ default: 3600 seconds (2 hours)
+  , asAuthPrefix        :: T.Text -- ^ default: _auth_middleware
+  , asStateKey          :: S.ByteString -- ^ Cookie name, default: auth_state
+  , asProviders         :: Providers
+  , asProvidersTemplate :: Maybe T.Text -> Render Provider -> Providers -> Builder
   }
 
+-- | Default middleware settings. See various setters in order to change available settings
 defaultAuthSettings :: AuthSettings
 defaultAuthSettings =
   AuthSettings
@@ -99,6 +86,8 @@ defaultAuthSettings =
   , asSessionAge = 3600
   , asAuthPrefix = "_auth_middleware"
   , asStateKey = "auth_state"
+  , asProviders = HM.empty
+  , asProvidersTemplate = providersTemplate
   }
 
 
@@ -137,12 +126,12 @@ setAuthPrefix x as = as { asAuthPrefix = x }
 --
 -- Since 0.1.0
 setAuthAppRootStatic :: T.Text -> AuthSettings -> AuthSettings
-setAuthAppRootStatic x = setAuthAppRootGeneric $ return $ const $ return x
+setAuthAppRootStatic = setAuthAppRootGeneric . const . return
 
 -- | More generalized version of 'setAuthApprootStatic'.
 --
 -- Since 0.1.0
-setAuthAppRootGeneric :: IO (Request -> IO T.Text) -> AuthSettings -> AuthSettings
+setAuthAppRootGeneric :: (Request -> IO T.Text) -> AuthSettings -> AuthSettings
 setAuthAppRootGeneric x as = as { asGetAppRoot = x }
 
 -- | Acquire an HTTP connection manager.
@@ -162,36 +151,47 @@ setAuthSessionAge :: Int -> AuthSettings -> AuthSettings
 setAuthSessionAge x as = as { asSessionAge = x }
 
 
--- data Identity = Identity
---   { authUser         :: S.ByteString
---   , authProviderName :: S.ByteString
---   , authLoginTime    :: Int64
---   } deriving (Binary)
+-- | Set Authentication providers to be used.
+--
+-- Default is empty.
+--
+-- Since 0.1.0
+setAuthProviders :: Providers -> AuthSettings -> AuthSettings
+setAuthProviders !ps as = as { asProviders = ps }
 
-type Identity = S.ByteString
 
-data AuthState = AuthNeedRedirect Url
-               | AuthLoggedIn Identity
+-- | Set a custom template that will be rendered for a providers page
+--
+-- Default: `providersTemplate`
+--
+-- Since 0.1.0
+setAuthProvidersTemplate :: (Maybe T.Text -> Render Provider -> Providers -> Builder)
+                        -> AuthSettings
+                        -> AuthSettings
+setAuthProvidersTemplate t as = as { asProvidersTemplate = t }
+
+
+-- | Current state of the user.
+data AuthState = AuthNeedRedirect !S.ByteString
+               | AuthLoggedIn !AuthUser
     deriving (Generic, Show)
+
 instance Binary AuthState
 
 
-data Provider where
-  Provider :: AuthProvider p => p -> Provider
-
-instance AuthProvider Provider where
-  getName (Provider p) = getName p
-  handleLogin (Provider p) = handleLogin p
-
-
+-- | Creates an Authentication middleware that will make sure application is
+-- protected, thus allowing access only to users that go through an
+-- authentication process with one of the available providers. If more than one
+-- provider is specified, user will be directed to a page were one can be chosen
+-- from a list.
 mkAuthMiddleware
-  :: AuthSettings -> HM.HashMap T.Text Provider -> IO Middleware
-mkAuthMiddleware AuthSettings {..} providers = do
+  :: AuthSettings -> IO Middleware
+mkAuthMiddleware AuthSettings {..} = do
   secretKey <- asGetKey
-  getAppRoot <- asGetAppRoot
   man <- asGetManager
   let saveAuthState = saveCookieValue secretKey asStateKey asSessionAge
-  -- Redirect to a list of providers if more than one is availiable, otherwise
+      authRouteRender = mkRouteRender Nothing asAuthPrefix []
+  -- Redirect to a list of providers if more than one is available, otherwise
   -- start login process with the only provider.
   let enforceLogin protectedPath req respond =
         case pathInfo req of
@@ -199,7 +199,7 @@ mkAuthMiddleware AuthSettings {..} providers = do
             | prefix == asAuthPrefix ->
               case rest of
                 [] ->
-                  case HM.keys providers of
+                  case HM.elems asProviders of
                     [] ->
                       respond $
                       responseLBS
@@ -208,35 +208,58 @@ mkAuthMiddleware AuthSettings {..} providers = do
                         "No Authentication providers available."
                     [soleProvider] ->
                       let loginUrl =
-                            T.intercalate
-                              "/"
-                              ["", prefix, soleProvider, "login"]
+                            encodeUtf8 $ authRouteRender soleProvider []
                       in respond $
                          responseLBS
                            status303
-                           [("Location", encodeUtf8 loginUrl)]
+                           [("Location", loginUrl)]
                            "Redirecting to Login page"
                     _ ->
                       respond $
-                      responseLBS status501 [] "Show list of providers"
-                (providerName:login@"login":pathSuffix)
-                  | HM.member providerName providers ->
+                      responseBuilder status200 [] $
+                      asProvidersTemplate Nothing authRouteRender asProviders
+                (providerName:pathSuffix)
+                  | HM.member providerName asProviders -> do
+                    appRoot <- asGetAppRoot req
+                    let provider = asProviders HM.! providerName
                     let onSuccess userIdentity = do
-                          cookie <- saveAuthState $ AuthLoggedIn userIdentity
+                          CTime now <- epochTime
+                          cookie <-
+                            saveAuthState $
+                            AuthLoggedIn $
+                            AuthUser
+                            { authUserIdentity = userIdentity
+                            , authProviderName = encodeUtf8 $ getProviderName provider
+                            , authLoginTime = now
+                            }
                           return $
                             responseBuilder
                               status303
                               [("Location", protectedPath), cookie]
                               (fromByteString "Redirecting to " <>
                                fromByteString protectedPath)
-                    in respond =<<
-                       handleLogin
-                         (providers HM.! providerName)
-                         man
-                         req
-                         getAppRoot
-                         ([prefix, providerName, login], pathSuffix)
-                         onSuccess
+                    let onFailure status errMsg =
+                          return $
+                          responseBuilder status [] $
+                          asProvidersTemplate
+                            (Just $ decodeUtf8With lenientDecode errMsg)
+                            authRouteRender
+                            asProviders
+                    let providerUrlRenderer (ProviderUrl suffix) =
+                          mkRouteRender
+                            (Just appRoot)
+                            asAuthPrefix
+                            suffix
+                            provider
+                    respond =<<
+                      handleLogin
+                        provider
+                        man
+                        req
+                        providerUrlRenderer
+                        pathSuffix
+                        onSuccess
+                        onFailure
                 _ -> respond $ responseLBS status404 [] "Unknown URL"
           _ -> do
             cookie <-
@@ -257,7 +280,7 @@ mkAuthMiddleware AuthSettings {..} providers = do
       Nothing -> enforceLogin "/" req respond
 
 
-userKey :: Vault.Key S.ByteString
+userKey :: Vault.Key AuthUser
 userKey = unsafePerformIO Vault.newKey
 {-# NOINLINE userKey #-}
 
@@ -268,8 +291,8 @@ userKey = unsafePerformIO Vault.newKey
 -- @Just@ value.
 --
 -- Since 0.1.1.0
-getUserName :: Request -> Maybe S.ByteString
-getUserName = Vault.lookup userKey . vault
+getAuthUser :: Request -> Maybe AuthUser
+getAuthUser = Vault.lookup userKey . vault
 
 
 -- | Current version
@@ -277,3 +300,4 @@ getUserName = Vault.lookup userKey . vault
 -- Since 0.1.0
 waiMiddlewareAuthVersion :: Version
 waiMiddlewareAuthVersion = Paths.version
+
