@@ -1,24 +1,22 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Network.Wai.Middleware.Auth.Github
+{-# LANGUAGE RecordWildCards   #-}
+module Network.Wai.Middleware.Auth.OAuth2.Github
     ( Github(..)
     , githubParser
     , mkGithubProvider
     ) where
-import           Control.Exception.Safe      (catchAny)
-import           Control.Monad               (guard)
+import           Control.Exception.Safe               (catchAny)
+import           Control.Monad                        (guard)
 import           Data.Aeson
-import qualified Data.ByteString             as S
-
-import           Data.Monoid                 ((<>))
-import qualified Data.Text                   as T
-import           Data.Text.Encoding          (encodeUtf8)
-
+import qualified Data.ByteString                      as S
+import           Data.Monoid                          ((<>))
+import qualified Data.Text                            as T
+import           Data.Text.Encoding                   (encodeUtf8)
 import           Network.HTTP.Simple
 import           Network.HTTP.Types
-
-import           Network.Wai.Middleware.Auth.Provider
+import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
+import           Network.Wai.Middleware.Auth.Provider
 
 
 mkGithubProvider
@@ -44,8 +42,7 @@ mkGithubProvider appName clientId clientSecret emailWhiteList =
         , providerLogoUrl =
             "https://assets-cdn.github.com/images/modules/logos_page/Octocat.png"
         , providerDescr =
-            "Use your GitHub account to access this page. Verified emails attached " <>
-            "to an account might be used to further validate user identity."
+            "Use your GitHub account to access this page."
         }
     }
 
@@ -94,17 +91,9 @@ retrieveEmails appName emailApiEndpoint accessToken = do
       ]
 
 
--- TODO: implement validation
-getValidEmail :: [T.Text] -> [T.Text] -> Maybe T.Text
-getValidEmail _whitelist emails = Just $ head emails
-
-
 instance AuthProvider Github where
-
   getProviderName _ = "github"
-
   getProviderInfo = getProviderInfo . githubOAuth2
-
   handleLogin Github {..} man req renderUrl suffix onSuccess onFailure = do
     let onOAuth2Success accessToken = do
           catchAny
@@ -118,8 +107,8 @@ instance AuthProvider Github where
                 case mEmail of
                   Just email -> onSuccess (encodeUtf8 email)
                   Nothing ->
-                    onFailure
-                      status403
-                      "No valid email with permission to access was found.") $ \_err ->
-            onFailure status501 "Issue communicating with github"
+                    onFailure status403 $
+                    "No valid email was found with permission to access this resource. " <>
+                    "Please contact the administrator.")
+            (\_err -> onFailure status501 "Issue communicating with github")
     handleLogin githubOAuth2 man req renderUrl suffix onOAuth2Success onFailure

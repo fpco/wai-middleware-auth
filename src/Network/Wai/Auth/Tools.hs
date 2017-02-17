@@ -3,6 +3,7 @@ module Network.Wai.Auth.Tools
   ( encodeKey
   , decodeKey
   , toLowerUnderscore
+  , getValidEmail
   ) where
 
 import qualified Data.ByteString        as S
@@ -10,8 +11,8 @@ import           Data.ByteString.Base64 as B64
 import           Data.Char              (isLower, toLower)
 import           Data.Foldable          (foldr')
 import           Data.Serialize         (Get, get, put, runGet, runPut)
+import qualified Data.Text              as T
 import           Web.ClientSession      (Key)
-
 
 
 -- | Decode a `Key` that is in a base64 encoded serialized form
@@ -36,3 +37,10 @@ toLowerUnderscore (x:xs) = toLower x : (foldr' toLowerWithUnder [] xs)
     toLowerWithUnder !y !acc
       | isLower y = y : acc
       | otherwise = '_' : toLower y : acc
+
+
+-- TODO: implement validation
+-- | Check email list against a whitelist and pick first one that matches or
+-- Nothing otherwise.
+getValidEmail :: [T.Text] -> [T.Text] -> Maybe T.Text
+getValidEmail _whitelist emails = Just $ head emails

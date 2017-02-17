@@ -192,6 +192,9 @@ $doctype 5
   <body>
     <div .media-container>
       <h3>Select one of available authentication methods:
+      $maybe errMsg <- merrMsg
+        <div .alert .alert-danger role="alert">
+          #{errMsg}
       $forall provider <- providers
         $with info <- getProviderInfo provider
           <div .media.provider>
@@ -202,7 +205,4 @@ $doctype 5
                 <h3 .media-heading>
                   #{providerTitle info}
                 #{providerDescr info}
-      $maybe errMsg <- merrMsg
-        <div>
-          <span .error> #{errMsg}
 |] render

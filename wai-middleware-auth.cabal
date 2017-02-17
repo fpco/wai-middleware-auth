@@ -14,7 +14,8 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Network.Wai.Middleware.Auth
                        Network.Wai.Middleware.Auth.OAuth2
-                       Network.Wai.Middleware.Auth.Github
+                       Network.Wai.Middleware.Auth.OAuth2.Github
+                       Network.Wai.Middleware.Auth.OAuth2.Google
                        Network.Wai.Middleware.Auth.Provider
                        Network.Wai.Middleware.Redirect2tls
                        Network.Wai.Auth.Executable

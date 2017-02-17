@@ -2,12 +2,13 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Main where
-import           Data.Monoid                        ((<>))
+import           Data.Monoid                               ((<>))
 import           Network.Wai.Auth.Executable
-import           Network.Wai.Handler.Warp           (run)
+import           Network.Wai.Handler.Warp                  (run)
 import           Network.Wai.Middleware.Auth
-import           Network.Wai.Middleware.Auth.Github
 import           Network.Wai.Middleware.Auth.OAuth2
+import           Network.Wai.Middleware.Auth.OAuth2.Github
+import           Network.Wai.Middleware.Auth.OAuth2.Google
 import           Options.Applicative.Simple
 
 
@@ -39,5 +40,5 @@ main = do
   let run' port app = do
         putStrLn $ "Listening on port " ++ show port
         run port app
-  mkMain authConfig [oAuth2Parser, githubParser] run'
+  mkMain authConfig [githubParser, googleParser, oAuth2Parser] run'
 

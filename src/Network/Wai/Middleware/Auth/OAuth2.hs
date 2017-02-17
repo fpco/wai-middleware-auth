@@ -39,9 +39,7 @@ oAuth2Parser = mkProviderParser (undefined :: OAuth2)
 
 instance AuthProvider OAuth2 where
   getProviderName _ = "oauth2"
-
   getProviderInfo = oa2ProviderInfo
-
   handleLogin oa2@OAuth2 {..} man req renderUrl suffix onSuccess onFailure = do
     let oauth2 =
           OA2.OAuth2
@@ -63,25 +61,28 @@ instance AuthProvider OAuth2 where
             status303
             [("Location", redirectUrl)]
             "Redirect to OAuth2 Authentication server"
-      ["complete"] -> do
+      ["complete"] ->
         let params = queryString req
-        case lookup "code" params of
-          Just (Just code) -> do
-            eRes <- OA2.fetchAccessToken man oauth2 code
-            case eRes of
-              Left err -> onFailure status501 $ SL.toStrict err
-              Right token -> onSuccess $ OA2.accessToken token
-          _ ->
-            case lookup "error" params of
-              (Just (Just "access_denied")) ->
-                onFailure status403 "User rejected access to the application."
-              (Just (Just error_code)) ->
-                onFailure status501 $ "Received an error: " <> error_code
-              _ ->
-                onFailure status501 $
-                "Unknown error connecting to " <>
-                encodeUtf8 (getProviderName oa2)
-      _ -> onFailure status404 "Unknown Url"
+        in case lookup "code" params of
+             Just (Just code) -> do
+               eRes <- OA2.fetchAccessToken man oauth2 code
+               case eRes of
+                 Left err -> onFailure status501 $ SL.toStrict err
+                 Right token -> onSuccess $ OA2.accessToken token
+             _ ->
+               case lookup "error" params of
+                 (Just (Just "access_denied")) ->
+                   onFailure
+                     status403
+                     "User rejected access to the application."
+                 (Just (Just error_code)) ->
+                   onFailure status501 $ "Received an error: " <> error_code
+                 (Just Nothing) ->
+                   onFailure status501 $
+                   "Unknown error connecting to " <>
+                   encodeUtf8 (getProviderName oa2)
+                 Nothing -> onFailure status404 "Page not found. Please continue with login."
+      _ -> onFailure status404 "Page not found. Please continue with login."
 
 
 $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
