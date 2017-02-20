@@ -43,8 +43,7 @@ import           Network.HTTP.Client.TLS              (tlsManagerSettings)
 import           Network.HTTP.Types                   (status200, status303,
                                                        status404, status501)
 import           Network.Wai                          (Middleware, Request,
-                                                       pathInfo,
-                                                       rawPathInfo,
+                                                       pathInfo, rawPathInfo,
                                                        rawQueryString,
                                                        responseBuilder,
                                                        responseLBS, vault)
@@ -166,8 +165,8 @@ setAuthProviders !ps as = as { asProviders = ps }
 --
 -- Since 0.1.0
 setAuthProvidersTemplate :: (Maybe T.Text -> Render Provider -> Providers -> Builder)
-                        -> AuthSettings
-                        -> AuthSettings
+                         -> AuthSettings
+                         -> AuthSettings
 setAuthProvidersTemplate t as = as { asProvidersTemplate = t }
 
 
@@ -184,8 +183,7 @@ instance Binary AuthState
 -- authentication process with one of the available providers. If more than one
 -- provider is specified, user will be directed to a page were one can be chosen
 -- from a list.
-mkAuthMiddleware
-  :: AuthSettings -> IO Middleware
+mkAuthMiddleware :: AuthSettings -> IO Middleware
 mkAuthMiddleware AuthSettings {..} = do
   secretKey <- asGetKey
   man <- asGetManager
@@ -219,9 +217,8 @@ mkAuthMiddleware AuthSettings {..} = do
                       responseBuilder status200 [] $
                       asProvidersTemplate Nothing authRouteRender asProviders
                 (providerName:pathSuffix)
-                  | HM.member providerName asProviders -> do
+                  | Just provider <- HM.lookup providerName asProviders -> do
                     appRoot <- asGetAppRoot req
-                    let provider = asProviders HM.! providerName
                     let onSuccess userIdentity = do
                           CTime now <- epochTime
                           cookie <-
