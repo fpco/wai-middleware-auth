@@ -10,17 +10,15 @@ import qualified Data.ByteString        as S
 import           Data.ByteString.Base64 as B64
 import           Data.Char              (isLower, toLower)
 import           Data.Foldable          (foldr')
+import           Data.Maybe             (listToMaybe)
 import           Data.Serialize         (Get, get, put, runGet, runPut)
-import qualified Data.Text              as T
+import           Text.Regex.Posix       ((=~))
 import           Web.ClientSession      (Key)
 
 
 -- | Decode a `Key` that is in a base64 encoded serialized form
-decodeKey :: Monad m => S.ByteString -> m Key
-decodeKey secretKeyB64 =
-  case B64.decode secretKeyB64 >>= runGet (get :: Get Key) of
-    Left err        -> fail err
-    Right secretKey -> return secretKey
+decodeKey :: S.ByteString -> Either String Key
+decodeKey secretKeyB64 = B64.decode secretKeyB64 >>= runGet (get :: Get Key)
 
 
 -- | Serialize and base64 encode a secret `Key`
@@ -39,8 +37,8 @@ toLowerUnderscore (x:xs) = toLower x : (foldr' toLowerWithUnder [] xs)
       | otherwise = '_' : toLower y : acc
 
 
--- TODO: implement validation
 -- | Check email list against a whitelist and pick first one that matches or
 -- Nothing otherwise.
-getValidEmail :: [T.Text] -> [T.Text] -> Maybe T.Text
-getValidEmail _whitelist emails = Just $ head emails
+getValidEmail :: [S.ByteString] -> [S.ByteString] -> Maybe S.ByteString
+getValidEmail whitelist emails =
+  listToMaybe [e =~ w | e <- emails, w <- whitelist]

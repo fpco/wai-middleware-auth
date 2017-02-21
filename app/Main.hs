@@ -13,9 +13,8 @@ import           Options.Applicative.Simple
 
 
 data BasicOptions = BasicOptions
-    { configFile :: FilePath
-    }
-    deriving Show
+  { configFile :: FilePath
+  } deriving (Show)
 
 basicSettingsParser :: Parser BasicOptions
 basicSettingsParser =
@@ -37,8 +36,6 @@ main = do
       basicSettingsParser
       empty
   authConfig <- readAuthConfig configFile
-  let run' port app = do
-        putStrLn $ "Listening on port " ++ show port
-        run port app
-  mkMain authConfig [githubParser, googleParser, oAuth2Parser] run'
-
+  mkMain authConfig [githubParser, googleParser, oAuth2Parser] $ \port app -> do
+    putStrLn $ "Listening on port " ++ show port
+    run port app

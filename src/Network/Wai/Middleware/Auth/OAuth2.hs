@@ -12,8 +12,10 @@ import           Data.Aeson.TH                        (defaultOptions,
                                                        fieldLabelModifier)
 import qualified Data.ByteString.Lazy                 as SL
 import           Data.Monoid                          ((<>))
+import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
+import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.Types                   (status303, status403,
                                                        status404, status501)
 import qualified Network.OAuth.OAuth2                 as OA2
@@ -29,18 +31,20 @@ data OAuth2 = OAuth2
   , oa2AccessTokenEndpoint :: T.Text
   , oa2Scope               :: Maybe [T.Text]
   , oa2ProviderInfo        :: ProviderInfo
-  --, oa2MaxLoginWait :: Maybe Int
   }
 
 
+-- | Aeson parser for `OAuth2` provider.
+--
+-- @since 0.1.0
 oAuth2Parser :: ProviderParser
-oAuth2Parser = mkProviderParser (undefined :: OAuth2)
+oAuth2Parser = mkProviderParser (Proxy :: Proxy OAuth2)
 
 
 instance AuthProvider OAuth2 where
   getProviderName _ = "oauth2"
   getProviderInfo = oa2ProviderInfo
-  handleLogin oa2@OAuth2 {..} man req renderUrl suffix onSuccess onFailure = do
+  handleLogin oa2@OAuth2 {..} req suffix renderUrl onSuccess onFailure = do
     let oauth2 =
           OA2.OAuth2
           { oauthClientId = encodeUtf8 oa2ClientId
@@ -65,9 +69,10 @@ instance AuthProvider OAuth2 where
         let params = queryString req
         in case lookup "code" params of
              Just (Just code) -> do
+               man <- getGlobalManager
                eRes <- OA2.fetchAccessToken man oauth2 code
                case eRes of
-                 Left err -> onFailure status501 $ SL.toStrict err
+                 Left err    -> onFailure status501 $ SL.toStrict err
                  Right token -> onSuccess $ OA2.accessToken token
              _ ->
                case lookup "error" params of
@@ -81,7 +86,10 @@ instance AuthProvider OAuth2 where
                    onFailure status501 $
                    "Unknown error connecting to " <>
                    encodeUtf8 (getProviderName oa2)
-                 Nothing -> onFailure status404 "Page not found. Please continue with login."
+                 Nothing ->
+                   onFailure
+                     status404
+                     "Page not found. Please continue with login."
       _ -> onFailure status404 "Page not found. Please continue with login."
 
 

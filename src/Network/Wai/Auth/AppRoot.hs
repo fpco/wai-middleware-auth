@@ -5,7 +5,7 @@ module Network.Wai.Auth.AppRoot
 
 import           Data.ByteString          (ByteString)
 import           Data.CaseInsensitive     (CI, mk)
-import qualified Data.Map                 as Map
+import qualified Data.HashMap.Lazy        as HM
 import           Data.Monoid              ((<>))
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8With)
@@ -27,10 +27,9 @@ import           Network.Wai              (Request, isSecure, requestHeaderHost,
 --
 -- * Reverse proxies that modify the host header
 --
--- Since 0.1.0
-smartAppRoot :: Request -> IO T.Text
+-- @since 0.1.0.0
+smartAppRoot :: Request -> T.Text
 smartAppRoot req =
-  return $
   let secure = isSecure req || any isSecureHeader (requestHeaders req)
       host =
         maybe "localhost" (decodeUtf8With lenientDecode) (requestHeaderHost req)
@@ -42,9 +41,9 @@ smartAppRoot req =
 -- |
 --
 -- See: http://stackoverflow.com/a/16042648/369198
-httpsHeaders :: Map.Map (CI ByteString) (CI ByteString)
+httpsHeaders :: HM.HashMap (CI ByteString) (CI ByteString)
 httpsHeaders =
-  Map.fromList
+  HM.fromList
     [ ("X-Forwarded-Protocol", "https")
     , ("X-Forwarded-Ssl", "on")
     , ("X-Url-Scheme", "https")
@@ -54,7 +53,7 @@ httpsHeaders =
 
 isSecureHeader :: Header -> Bool
 isSecureHeader (key, value) =
-  case Map.lookup key httpsHeaders of
+  case HM.lookup key httpsHeaders of
     Nothing     -> False
     Just value' -> valueCI == value'
   where

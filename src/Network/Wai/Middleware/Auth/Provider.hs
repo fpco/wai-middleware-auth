@@ -6,22 +6,29 @@
 {-# LANGUAGE TemplateHaskell     #-}
 module Network.Wai.Middleware.Auth.Provider
   ( AuthProvider(..)
+  -- * Provider
   , Provider(..)
   , ProviderUrl(..)
   , ProviderInfo(..)
+  , Providers
+  -- * Provider Parsing
+  , ProviderParser
+  , mkProviderParser
+  , parseProviders
+  -- * User
   , AuthUser(..)
   , UserIdentity
-  , ProviderParser
-  , Providers
+  -- * Template
   , mkRouteRender
-  , mkProviderParser
   , providersTemplate
   ) where
 
 import           Blaze.ByteString.Builder      (toByteString)
 import           Control.Arrow                 (second)
+import           Data.Aeson                    (FromJSON (..), Object,
+                                                Result (..), Value)
+import           Data.Aeson.Types              (parseEither)
 
-import           Data.Aeson
 import           Data.Aeson.TH                 (defaultOptions, deriveJSON,
                                                 fieldLabelModifier)
 import           Data.Aeson.Types              (Parser)
@@ -32,84 +39,73 @@ import qualified Data.HashMap.Strict           as HM
 import           Data.Int
 import           Data.Maybe                    (fromMaybe)
 import           Data.Monoid                   ((<>))
+import           Data.Proxy                    (Proxy)
 import qualified Data.Text                     as T
 import           Data.Text.Encoding            (decodeUtf8With)
 import           Data.Text.Encoding.Error      (lenientDecode)
-import           Data.Text.Lazy.Encoding       (encodeUtf8Builder)
 import           GHC.Generics                  (Generic)
-import           Network.HTTP.Client           (Manager)
 import           Network.HTTP.Types            (Status, renderQueryText)
 import           Network.Wai                   (Request, Response)
 import           Network.Wai.Auth.Tools        (toLowerUnderscore)
-import           Text.Blaze.Html.Renderer.Text (renderHtml)
+import           Text.Blaze.Html.Renderer.Utf8 (renderHtmlBuilder)
 import           Text.Hamlet                   (Render, hamlet)
 
-type UserIdentity = S.ByteString
-
-data AuthUser = AuthUser
-  { authUserIdentity :: !UserIdentity
-  , authProviderName :: !S.ByteString
-  , authLoginTime    :: !Int64
-  } deriving (Generic, Show)
-
-instance Binary AuthUser
-
--- | Core Authentication class, that allows for extensibility of the Auth middleware.
+-- | Core Authentication class, that allows for extensibility of the Auth
+-- middleware created by `Network.Wai.Middleware.Auth.mkAuthMiddleware`. Most
+-- important function is `handleLogin`, which implements the actual behavior of a
+-- provider. It's function arguments in order:
+--
+--     * @`ap`@ - Current provider.
+--     * @`Request`@ - Request made to the login page
+--     * @[`T.Text`]@ - Url suffix, i.e. last part of the Url split by @\'/\'@ character,
+--     for instance @["login", "complete"]@ suffix in the example below.
+--     * @`Render` `ProviderUrl`@ -
+--     Url renderer. It takes desired suffix as first argument and produces an
+--     absolute Url renderer. It can further be used to generate provider urls,
+--     for instance in Hamlet templates as
+--     will result in
+--     @"https:\/\/appRoot.com\/_auth_middleware\/providerName\/login\/complete?user=Hamlet"@
+--     or generate Urls for callbacks.
+--
+--         @
+--         \@?{(ProviderUrl ["login", "complete"], [("user", "Hamlet")])}
+--         @
+--
+--     * @(`UserIdentity` -> `IO` `Response`)@ - Action to call on a successfull login.
+--     * @(`Status` -> `S.ByteString` -> `IO` `Response`)@ - Should be called in case of
+--     a failure with login process by supplying a
+--     status and a short error message.
 class AuthProvider ap where
 
   -- | Return a name for the provider. It will be used as a unique identifier
   -- for this provider. Argument should not be evaluated, as there are many
   -- places were `undefined` value is passed to this function.
+  --
+  -- @since 0.1.0
   getProviderName :: ap -> T.Text
 
   -- | Get info about the provider. It will be used in rendering the web page
   -- with a list of providers.
+  --
+  -- @since 0.1.0
   getProviderInfo :: ap -> ProviderInfo
 
-  -- | Handle a login request.
+  -- | Handle a login request in a custom manner. Can be used to render a login
+  -- page with a form or redirect to some other authentication service like
+  -- OpenID or OAuth2.
+  --
+  -- @since 0.1.0
   handleLogin
     :: ap
-    -> Manager -- ^ Default manager.
-    -> Request -- ^ Request made to the login page
-    -> Render ProviderUrl
-    -- ^ Url renderer. It takes desired suffix as first argument and produces a
-    -- absolute Url renderer. It can further be used to generate provider urls,
-    -- for instance in Hamlet templates as
-    -- @\@?{(ProviderUrl ["login", "complete"], [("user", "Hamlet")])}@
-    -- will result in
-    -- "https:\/\/appRoot.com\/_auth_middleware\/providerName\/login\/complete?user=Hamlet"
-    -- or generate Urls for callbacks.
+    -> Request
     -> [T.Text]
-    -- ^ Url suffix, i.e. last part of the Url split by @'\/'@ character, eg:
-    -- https:\/\/example.com\/_auth_middleware\/providerName\/login\/complete
-    -- Suffix is: @["login", "complete"]@
-    --
-    -> (UserIdentity -> IO Response) -- ^ Action to call on successfull login
+    -> Render ProviderUrl
+    -> (UserIdentity -> IO Response)
     -> (Status -> S.ByteString -> IO Response)
-    -- ^ Should be called in case of a failure with login process by supplying a
-    -- status and a short error message.
-    -> IO Response -- ^ Response to login request.
+    -> IO Response
 
 
-type Providers = HM.HashMap T.Text Provider
-
-type ProviderParser = (T.Text, Value -> Parser Provider)
-
--- | First argument is not evaluated and is only needed for restricting the type.
-mkProviderParser :: forall ap . (FromJSON ap, AuthProvider ap) => ap -> ProviderParser
-mkProviderParser ap = (getProviderName ap,
-                       fmap Provider <$> (parseJSON :: Value -> Parser ap))
-
-data ProviderUrl = ProviderUrl [T.Text]
-
-
-data ProviderInfo = ProviderInfo
-  { providerTitle   :: T.Text
-  , providerLogoUrl :: T.Text
-  , providerDescr   :: T.Text
-  } deriving (Show)
-
-
+-- | Generic authentication provider wrapper.
 data Provider where
   Provider :: AuthProvider p => p -> Provider
 
@@ -123,6 +119,61 @@ instance AuthProvider Provider where
   handleLogin (Provider p) = handleLogin p
 
 
+-- | Collection of supported providers.
+type Providers = HM.HashMap T.Text Provider
+
+-- | Aeson parser for a provider with unique provider name (same as returned by
+-- `getProviderName`)
+type ProviderParser = (T.Text, Value -> Parser Provider)
+
+-- | Data type for rendering Provider specific urls.
+data ProviderUrl = ProviderUrl [T.Text]
+
+-- | Provider information used for rendering a page with list of supported providers.
+data ProviderInfo = ProviderInfo
+  { providerTitle   :: T.Text
+  , providerLogoUrl :: T.Text
+  , providerDescr   :: T.Text
+  } deriving (Show)
+
+
+-- | An arbitrary user identifer, eg. a username or an email address.
+type UserIdentity = S.ByteString
+
+-- | Representation of a user for a particular `Provider`.
+data AuthUser = AuthUser
+  { authUserIdentity :: !UserIdentity
+  , authProviderName :: !S.ByteString
+  , authLoginTime    :: !Int64
+  } deriving (Generic, Show)
+
+instance Binary AuthUser
+
+
+
+-- | First argument is not evaluated and is only needed for restricting the type.
+mkProviderParser :: forall ap . (FromJSON ap, AuthProvider ap) => Proxy ap -> ProviderParser
+mkProviderParser _ =
+  ( getProviderName nameProxyError
+  , fmap Provider <$> (parseJSON :: Value -> Parser ap))
+  where
+    nameProxyError :: ap
+    nameProxyError = error "AuthProvider.getProviderName should not evaluate it's argument."
+
+-- | Parse configuration for providers from an `Object`.
+parseProviders :: Object -> [ProviderParser] -> Result Providers
+parseProviders unparsedProvidersHM providerParsers =
+  if HM.null unrecognized
+    then sequence $ HM.intersectionWith parseProvider unparsedProvidersHM parsersHM
+    else Error $
+         "Provider name(s) are not recognized: " ++
+         T.unpack (T.intercalate ", " $ HM.keys unrecognized)
+  where
+    parsersHM = HM.fromList providerParsers
+    unrecognized = HM.difference unparsedProvidersHM parsersHM
+    parseProvider v p = either Error Success $ parseEither p v
+
+-- | Create a url renderer for a provider.
 mkRouteRender :: Maybe T.Text -> T.Text -> [T.Text] -> Render Provider
 mkRouteRender appRoot authPrefix authSuffix (Provider p) params =
   (T.intercalate "/" $ [root, authPrefix, getProviderName p] ++ authSuffix) <>
@@ -142,7 +193,7 @@ providersTemplate :: Maybe T.Text -- ^ Error message to display, if any.
                   -> Providers -- ^ List of available providers.
                   -> B.Builder
 providersTemplate merrMsg render providers =
-  encodeUtf8Builder $ renderHtml $ [hamlet|
+  renderHtmlBuilder $ [hamlet|
 $doctype 5
 <html>
   <head>

@@ -2,30 +2,38 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Network.Wai.Middleware.Auth.OAuth2.Github
     ( Github(..)
-    , githubParser
     , mkGithubProvider
+    , githubParser
     ) where
 import           Control.Exception.Safe               (catchAny)
-import           Control.Monad                        (guard)
+import           Data.Maybe                           (fromMaybe)
 import           Data.Aeson
 import qualified Data.ByteString                      as S
 import           Data.Monoid                          ((<>))
+import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
-import           Network.HTTP.Simple
+import           Network.HTTP.Simple                  (getResponseBody,
+                                                       httpJSON, parseRequest,
+                                                       setRequestHeaders)
 import           Network.HTTP.Types
 import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.Provider
 
 
+-- | Create a github authentication provider
+--
+-- @since 0.1.0
 mkGithubProvider
-  :: T.Text
-  -> T.Text
-  -> T.Text
-  -> [T.Text]
+  :: T.Text -- ^ Name of the application as it is registered on github
+  -> T.Text -- ^ @client_id@ from github
+  -> T.Text -- ^ @client_secret@ from github
+  -> [S.ByteString] -- ^ White list of posix regular expressions for emails
+  -- attached to github account.
+  -> Maybe ProviderInfo -- ^ Replacement for default info
   -> Github
-mkGithubProvider appName clientId clientSecret emailWhiteList =
+mkGithubProvider appName clientId clientSecret emailWhiteList mProviderInfo =
   Github
     appName
     "https://api.github.com/user/emails"
@@ -36,48 +44,59 @@ mkGithubProvider appName clientId clientSecret emailWhiteList =
     , oa2AuthorizeEndpoint = "https://github.com/login/oauth/authorize"
     , oa2AccessTokenEndpoint = "https://github.com/login/oauth/access_token"
     , oa2Scope = Just ["user:email"]
-    , oa2ProviderInfo =
-        ProviderInfo
-        { providerTitle = "GitHub"
-        , providerLogoUrl =
-            "https://assets-cdn.github.com/images/modules/logos_page/Octocat.png"
-        , providerDescr =
-            "Use your GitHub account to access this page."
-        }
+    , oa2ProviderInfo = fromMaybe defProviderInfo mProviderInfo
     }
+  where
+    defProviderInfo =
+      ProviderInfo
+      { providerTitle = "GitHub"
+      , providerLogoUrl =
+          "https://assets-cdn.github.com/images/modules/logos_page/Octocat.png"
+      , providerDescr = "Use your GitHub account to access this page."
+      }
 
+-- | Aeson parser for `Github` provider.
+--
+-- @since 0.1.0
 githubParser :: ProviderParser
-githubParser = mkProviderParser (undefined :: Github)
+githubParser = mkProviderParser (Proxy :: Proxy Github)
 
 
+-- | Github authentication provider
 data Github = Github
   { githubAppName          :: T.Text
   , githubAPIEmailEndpoint :: T.Text
-  , githubEmailWhitelist   :: [T.Text]
+  , githubEmailWhitelist   :: [S.ByteString]
   , githubOAuth2           :: OAuth2
   }
 
 instance FromJSON Github where
+  parseJSON =
+    withObject "Github Provider Object" $ \obj -> do
+      appName <- obj .: "app_name"
+      clientId <- obj .: "client_id"
+      clientSecret <- obj .: "client_secret"
+      emailWhiteList <- obj .:? "email_white_list" .!= []
+      mProviderInfo <- obj .:? "provider_info"
+      return $
+        mkGithubProvider
+          appName
+          clientId
+          clientSecret
+          (map encodeUtf8 emailWhiteList)
+          mProviderInfo
 
-  parseJSON = withObject "Github Provider Object" $ \ obj -> do
-    appName <- obj .: "app_name"
-    clientId <- obj .: "client_id"
-    clientSecret <- obj .: "client_secret"
-    emailWhiteList <- obj .:? "email_white_list" .!= []
-    return $ mkGithubProvider appName clientId clientSecret emailWhiteList
-
-
-newtype GithubEmail = GithubEmail { githubEmail :: T.Text } deriving Show
+-- | Newtype wrapper for a github verified email
+newtype GithubEmail = GithubEmail { githubEmail :: S.ByteString } deriving Show
 
 instance FromJSON GithubEmail where
   parseJSON = withObject "Github Verified Email" $ \ obj -> do
-    verified <- obj .: "verified"
-    guard verified
+    True <- obj .: "verified"
     email <- obj .: "email"
-    return (GithubEmail email)
+    return (GithubEmail $ encodeUtf8 email)
 
 
-
+-- | Makes an API call to github and retrieves all user's verified emails.
 retrieveEmails :: T.Text -> T.Text -> S.ByteString -> IO [GithubEmail]
 retrieveEmails appName emailApiEndpoint accessToken = do
   req <- parseRequest (T.unpack emailApiEndpoint)
@@ -94,7 +113,7 @@ retrieveEmails appName emailApiEndpoint accessToken = do
 instance AuthProvider Github where
   getProviderName _ = "github"
   getProviderInfo = getProviderInfo . githubOAuth2
-  handleLogin Github {..} man req renderUrl suffix onSuccess onFailure = do
+  handleLogin Github {..} req suffix renderUrl onSuccess onFailure = do
     let onOAuth2Success accessToken = do
           catchAny
             (do emails <-
@@ -105,10 +124,10 @@ instance AuthProvider Github where
                     accessToken
                 let mEmail = getValidEmail githubEmailWhitelist emails
                 case mEmail of
-                  Just email -> onSuccess (encodeUtf8 email)
+                  Just email -> onSuccess email
                   Nothing ->
                     onFailure status403 $
                     "No valid email was found with permission to access this resource. " <>
                     "Please contact the administrator.")
             (\_err -> onFailure status501 "Issue communicating with github")
-    handleLogin githubOAuth2 man req renderUrl suffix onOAuth2Success onFailure
+    handleLogin githubOAuth2 req suffix renderUrl onOAuth2Success onFailure

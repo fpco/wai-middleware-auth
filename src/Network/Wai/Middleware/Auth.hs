@@ -10,7 +10,6 @@ module Network.Wai.Middleware.Auth
     , setAuthKey
     , setAuthAppRootStatic
     , setAuthAppRootGeneric
-    , setAuthManager
     , setAuthSessionAge
     , setAuthPrefix
     , setAuthCookieName
@@ -38,8 +37,6 @@ import qualified Data.Vault.Lazy                      as Vault
 import           Data.Version                         (Version)
 import           Foreign.C.Types                      (CTime (..))
 import           GHC.Generics                         (Generic)
-import           Network.HTTP.Client                  (Manager, newManager)
-import           Network.HTTP.Client.TLS              (tlsManagerSettings)
 import           Network.HTTP.Types                   (status200, status303,
                                                        status404, status501)
 import           Network.Wai                          (Middleware, Request,
@@ -63,25 +60,26 @@ import           Text.Hamlet                          (Render)
 -- To create a value, use 'defaultAuthSettings' and then various setter
 -- functions.
 --
--- Since 0.1.0
+-- @since 0.1.0
 data AuthSettings = AuthSettings
   { asGetKey            :: IO Key
   , asGetAppRoot        :: Request -> IO T.Text
-  , asGetManager        :: IO Manager -- ^ new TLS Manager
-  , asSessionAge        :: Int -- ^ default: 3600 seconds (2 hours)
+  , asSessionAge        :: Int -- ^ default: 3600 seconds (1 hour)
   , asAuthPrefix        :: T.Text -- ^ default: _auth_middleware
   , asStateKey          :: S.ByteString -- ^ Cookie name, default: auth_state
   , asProviders         :: Providers
   , asProvidersTemplate :: Maybe T.Text -> Render Provider -> Providers -> Builder
   }
 
--- | Default middleware settings. See various setters in order to change available settings
+-- | Default middleware settings. See various setters in order to change
+-- available settings
+--
+-- @since 0.1.0
 defaultAuthSettings :: AuthSettings
 defaultAuthSettings =
   AuthSettings
   { asGetKey = getDefaultKey
-  , asGetAppRoot = smartAppRoot
-  , asGetManager = newManager tlsManagerSettings
+  , asGetAppRoot = return <$> smartAppRoot
   , asSessionAge = 3600
   , asAuthPrefix = "_auth_middleware"
   , asStateKey = "auth_state"
@@ -94,7 +92,7 @@ defaultAuthSettings =
 --
 -- Default: 'getDefaultKey'
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthKey :: IO Key -> AuthSettings -> AuthSettings
 setAuthKey x as = as { asGetKey = x }
 
@@ -102,7 +100,7 @@ setAuthKey x as = as { asGetKey = x }
 --
 -- Default: "auth_state"
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthCookieName :: S.ByteString -> AuthSettings -> AuthSettings
 setAuthCookieName x as = as { asStateKey = x }
 
@@ -111,7 +109,7 @@ setAuthCookieName x as = as { asStateKey = x }
 --
 -- Default: "auth_state"
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthPrefix :: T.Text -> AuthSettings -> AuthSettings
 setAuthPrefix x as = as { asAuthPrefix = x }
 
@@ -123,29 +121,21 @@ setAuthPrefix x as = as { asAuthPrefix = x }
 --
 -- Default: use the APPROOT environment variable.
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthAppRootStatic :: T.Text -> AuthSettings -> AuthSettings
 setAuthAppRootStatic = setAuthAppRootGeneric . const . return
 
 -- | More generalized version of 'setAuthApprootStatic'.
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthAppRootGeneric :: (Request -> IO T.Text) -> AuthSettings -> AuthSettings
 setAuthAppRootGeneric x as = as { asGetAppRoot = x }
-
--- | Acquire an HTTP connection manager.
---
--- Default: get a new tls-enabled manager.
---
--- Since 0.1.0
-setAuthManager :: IO Manager -> AuthSettings -> AuthSettings
-setAuthManager x as = as { asGetManager = x }
 
 -- | Number of seconds to keep an authentication cookie active
 --
 -- Default: 3600
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthSessionAge :: Int -> AuthSettings -> AuthSettings
 setAuthSessionAge x as = as { asSessionAge = x }
 
@@ -154,7 +144,7 @@ setAuthSessionAge x as = as { asSessionAge = x }
 --
 -- Default is empty.
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthProviders :: Providers -> AuthSettings -> AuthSettings
 setAuthProviders !ps as = as { asProviders = ps }
 
@@ -163,7 +153,7 @@ setAuthProviders !ps as = as { asProviders = ps }
 --
 -- Default: `providersTemplate`
 --
--- Since 0.1.0
+-- @since 0.1.0
 setAuthProvidersTemplate :: (Maybe T.Text -> Render Provider -> Providers -> Builder)
                          -> AuthSettings
                          -> AuthSettings
@@ -183,10 +173,11 @@ instance Binary AuthState
 -- authentication process with one of the available providers. If more than one
 -- provider is specified, user will be directed to a page were one can be chosen
 -- from a list.
+--
+-- @since 0.1.0
 mkAuthMiddleware :: AuthSettings -> IO Middleware
 mkAuthMiddleware AuthSettings {..} = do
   secretKey <- asGetKey
-  man <- asGetManager
   let saveAuthState = saveCookieValue secretKey asStateKey asSessionAge
       authRouteRender = mkRouteRender Nothing asAuthPrefix []
   -- Redirect to a list of providers if more than one is available, otherwise
@@ -251,10 +242,9 @@ mkAuthMiddleware AuthSettings {..} = do
                     respond =<<
                       handleLogin
                         provider
-                        man
                         req
-                        providerUrlRenderer
                         pathSuffix
+                        providerUrlRenderer
                         onSuccess
                         onFailure
                 _ -> respond $ responseLBS status404 [] "Unknown URL"
@@ -287,14 +277,14 @@ userKey = unsafePerformIO Vault.newKey
 -- If called on a @Request@ behind the middleware, should always return a
 -- @Just@ value.
 --
--- Since 0.1.1.0
+-- @since 0.1.0
 getAuthUser :: Request -> Maybe AuthUser
 getAuthUser = Vault.lookup userKey . vault
 
 
 -- | Current version
 --
--- Since 0.1.0
+-- @since 0.1.0
 waiMiddlewareAuthVersion :: Version
 waiMiddlewareAuthVersion = Paths.version
 
