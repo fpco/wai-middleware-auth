@@ -64,7 +64,7 @@ import           Text.Hamlet                   (Render, hamlet)
 --     absolute Url renderer. It can further be used to generate provider urls,
 --     for instance in Hamlet templates as
 --     will result in
---     @"https:\/\/appRoot.com\/_auth_middleware\/providerName\/login\/complete?user=Hamlet"@
+--     @"https:\/\/approot.com\/_auth_middleware\/providerName\/login\/complete?user=Hamlet"@
 --     or generate Urls for callbacks.
 --
 --         @
@@ -235,6 +235,8 @@ $doctype 5
       }
       .provider .media-left {
         height: 70px;
+        width: 0px;
+        padding-right: 70px;
         position: relative;
       }
       a:hover {

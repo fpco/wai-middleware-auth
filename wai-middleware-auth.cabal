@@ -61,6 +61,9 @@ executable wai-auth
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:       base
+                     , bytestring
+                     , cereal
+                     , clientsession
                      , optparse-simple
                      , wai-middleware-auth
                      , warp

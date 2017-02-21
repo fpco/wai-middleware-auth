@@ -23,9 +23,10 @@ import           Web.ClientSession      (Key)
 -- | Configuration for a secret key that will be used to encrypt authenticated
 -- user as client side cookie.
 data SecretKey
-  = SecretKeyFile FilePath -- ^ Path to a secret key file, if it is malformed or
-                           -- doesn't exist it will be (re)created. If empty
-                           -- "client_session_key.aes" name will be used
+  = SecretKeyFile FilePath -- ^ Path to a secret key file in binary form, if it
+                           -- is malformed or doesn't exist it will be
+                           -- (re)created. If empty "client_session_key.aes"
+                           -- name will be used
   | SecretKey Key -- ^ Serialized and base64 encoded form of a secret key. Use
                   -- `encodeKey` to get a proper encoded form.
 
