@@ -51,13 +51,14 @@ with `example.com` domain. There is also a `secret_key` field which will be used
 to encrypt the session cookie. In order to generate a new random key run this command:
 
 ```shell
-$ echo $(stack exec -- wai-auth key --base64)
+$ echo $(wai-auth key --base64)
 azuCFq0zEBkLSXhQrhliZzZD8Kblo...
 ```
 
 Make sure you have proper callback/redirect urls registered with google/github
-apps, eg: `http://localhost:3000/_auth_middleware/google/complete` After
-configuration file is ready, running application is very easy:
+apps, eg: `http://localhost:3000/_auth_middleware/google/complete`.
+
+After configuration file is ready, running application is very easy:
 
 ```shell
 $ wai-auth --config-file=/path/to/config.yaml
