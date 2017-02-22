@@ -41,4 +41,4 @@ toLowerUnderscore (x:xs) = toLower x : (foldr' toLowerWithUnder [] xs)
 -- Nothing otherwise.
 getValidEmail :: [S.ByteString] -> [S.ByteString] -> Maybe S.ByteString
 getValidEmail whitelist emails =
-  listToMaybe [e =~ w | e <- emails, w <- whitelist]
+  listToMaybe $ filter (not . S.null) [e =~ w | e <- emails, w <- whitelist]
