@@ -3,7 +3,6 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Main where
 import qualified Data.ByteString                           as S
--- import           Data.ByteString.Base64                    as B64
 import           Data.Monoid                               ((<>))
 import           Data.Serialize                            (put, runPut)
 import           Network.Wai.Auth.Executable

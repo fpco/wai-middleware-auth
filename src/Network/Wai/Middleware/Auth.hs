@@ -210,14 +210,26 @@ mkAuthMiddleware AuthSettings {..} = do
                 (providerName:pathSuffix)
                   | Just provider <- HM.lookup providerName asProviders -> do
                     appRoot <- asGetAppRoot req
-                    let onSuccess userIdentity = do
+                    let onFailure status errMsg =
+                          return $
+                          responseBuilder status [] $
+                          asProvidersTemplate
+                            (Just $ decodeUtf8With lenientDecode errMsg)
+                            authRouteRender
+                            asProviders
+                    let onSuccess "" =
+                          onFailure
+                            status501
+                            "Empty user identity is not allowed"
+                        onSuccess userIdentity = do
                           CTime now <- epochTime
                           cookie <-
                             saveAuthState $
                             AuthLoggedIn $
                             AuthUser
                             { authUserIdentity = userIdentity
-                            , authProviderName = encodeUtf8 $ getProviderName provider
+                            , authProviderName =
+                                encodeUtf8 $ getProviderName provider
                             , authLoginTime = now
                             }
                           return $
@@ -226,13 +238,6 @@ mkAuthMiddleware AuthSettings {..} = do
                               [("Location", protectedPath), cookie]
                               (fromByteString "Redirecting to " <>
                                fromByteString protectedPath)
-                    let onFailure status errMsg =
-                          return $
-                          responseBuilder status [] $
-                          asProvidersTemplate
-                            (Just $ decodeUtf8With lenientDecode errMsg)
-                            authRouteRender
-                            asProviders
                     let providerUrlRenderer (ProviderUrl suffix) =
                           mkRouteRender
                             (Just appRoot)
@@ -248,6 +253,9 @@ mkAuthMiddleware AuthSettings {..} = do
                         onSuccess
                         onFailure
                 _ -> respond $ responseLBS status404 [] "Unknown URL"
+          -- Workaround for Chrome asking for favicon.ico, causing a wrong
+          -- redirect url to be stored in a cookie.
+          ["favicon.ico"] -> respond $ responseLBS status404 [] "No favicon.ico"
           _ -> do
             cookie <-
               saveAuthState $
