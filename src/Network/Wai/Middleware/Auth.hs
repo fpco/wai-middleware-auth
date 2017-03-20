@@ -230,7 +230,7 @@ mkAuthMiddleware AuthSettings {..} = do
                             { authUserIdentity = userIdentity
                             , authProviderName =
                                 encodeUtf8 $ getProviderName provider
-                            , authLoginTime = now
+                            , authLoginTime = fromIntegral now
                             }
                           return $
                             responseBuilder

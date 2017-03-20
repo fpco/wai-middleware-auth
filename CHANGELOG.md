@@ -1,3 +1,8 @@
+0.1.1.2
+=======
+
+* Fixed [wai-middleware-auth-0.1.1.1 does not compile in 32 bit Linux](https://github.com/fpco/wai-middleware-auth/issues/2)
+
 0.1.1.1
 =======
 
