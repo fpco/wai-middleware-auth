@@ -1,3 +1,8 @@
+0.1.2.0
+=======
+
+* Implemented compatibility with hoauth2 >= 1.0.0 - fixed: [#3](https://github.com/fpco/wai-middleware-auth/issues/3)
+
 0.1.1.2
 =======
 
