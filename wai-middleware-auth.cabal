@@ -24,7 +24,7 @@ library
                        Network.Wai.Auth.ClientSession
                        Network.Wai.Auth.Tools
   build-depends:       aeson
-                     , base              >= 4.7 && < 5
+                     , base                 >= 4.7 && < 5
                      , base64-bytestring
                      , binary
                      , blaze-builder
@@ -35,7 +35,7 @@ library
                      , clientsession
                      , cookie
                      , exceptions
-                     , hoauth2
+                     , hoauth2              >= 0.5.0 && < 1.0.0
                      , http-client
                      , http-client-tls
                      , http-conduit
