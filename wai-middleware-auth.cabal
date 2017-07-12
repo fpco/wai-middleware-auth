@@ -1,5 +1,5 @@
 name:                wai-middleware-auth
-version:             0.1.2.0
+version:             0.1.2.1
 synopsis:            Authentication middleware that secures WAI application
 description:         See README
 license:             MIT
