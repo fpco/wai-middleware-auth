@@ -15,6 +15,7 @@ import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
 import qualified Data.ByteString                      as S
+import qualified Data.ByteString.Char8                as S8 (pack)
 import qualified Data.ByteString.Lazy                 as SL
 import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
@@ -157,7 +158,7 @@ instance AuthProvider OAuth2 where
                man <- getGlobalManager
                eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
                case eRes of
-                 Left err    -> onFailure status501 $ SL.toStrict err
+                 Left err    -> onFailure status501 $ S8.pack $ show err
                  Right token -> onSuccess $ getAccessToken token
              _ ->
                case lookup "error" params of
