@@ -1,0 +1,17 @@
+resolver: lts-8.0
+packages:
+- '.'
+extra-deps: []
+flags: {}
+extra-package-dbs: []
+
+docker:
+  enable: true
+
+image:
+  container:
+     base: "fpco/wai-auth-base-image"
+     name: "fpco/wai-auth"
+     executables:
+       - wai-auth
+
