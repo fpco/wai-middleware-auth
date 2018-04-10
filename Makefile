@@ -24,8 +24,8 @@ build-image: build-base
 
 ## Push docker image
 push-image:
-	@echo docker push ${IMAGE_NAME}:${VERSION}
-	@echo docker push ${IMAGE_NAME}
+	@docker push ${IMAGE_NAME}:${VERSION}
+	@docker push ${IMAGE_NAME}
 
 ## Show help screen.
 help:
