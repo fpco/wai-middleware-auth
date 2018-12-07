@@ -4,7 +4,8 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install -y \
   ca-certificates \
-  libgmp-dev
+  libgmp-dev \
+  netbase
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
