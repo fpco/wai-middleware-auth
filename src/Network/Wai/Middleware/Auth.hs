@@ -252,6 +252,7 @@ mkAuthMiddleware AuthSettings {..} = do
                         providerUrlRenderer
                         onSuccess
                         onFailure
+                ["health"] -> respond $ responseLBS status200 [] "OK"
                 _ -> respond $ responseLBS status404 [] "Unknown URL"
           -- Workaround for Chrome asking for favicon.ico, causing a wrong
           -- redirect url to be stored in a cookie.
