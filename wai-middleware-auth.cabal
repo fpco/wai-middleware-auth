@@ -1,7 +1,7 @@
 name:                wai-middleware-auth
 version:             0.1.2.2
 synopsis:            Authentication middleware that secures WAI application
-description:         See README
+description:         Please see the README and Haddocks at <https://www.stackage.org/package/wai-middleware-auth>
 license:             MIT
 license-file:        LICENSE
 author:              Alexey Kuleshevich
@@ -9,7 +9,7 @@ maintainer:          alexey@fpcomplete.com
 category:            Web
 build-type:          Simple
 extra-doc-files:     README.md CHANGELOG.md
-cabal-version:       >=1.10
+cabal-version:       >=1.18
 
 library
   exposed-modules:     Network.Wai.Middleware.Auth
