@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP               #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
@@ -24,7 +23,9 @@ import qualified Data.ByteString.Lazy                 as SL
 import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
-import           Data.Text.Encoding                   (encodeUtf8)
+import           Data.Text.Encoding                   (encodeUtf8,
+                                                       decodeUtf8With)
+import           Data.Text.Encoding.Error             (lenientDecode)
 import           GHC.Generics                         (Generic)
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.Types                   (status303, status403,
@@ -36,15 +37,7 @@ import           Network.Wai.Auth.Tools               (toLowerUnderscore)
 import qualified Network.Wai.Middleware.Auth          as MA
 import           Network.Wai.Middleware.Auth.Provider
 import qualified URI.ByteString                       as U
-
-#if MIN_VERSION_hoauth2(1,0,0)
-import           Data.Text.Encoding                   (decodeUtf8With)
-import           Data.Text.Encoding.Error             (lenientDecode)
 import           URI.ByteString                       (URI)
-#else
-import           Data.Text.Encoding                   (decodeUtf8)
-type URI = OA2.URI
-#endif
 
 -- | General OAuth2 authentication `Provider`.
 data OAuth2 = OAuth2
@@ -85,8 +78,6 @@ parseAbsoluteURI urlTxt = do
     Left err  -> throwM $ URIParseException err
     Right url -> return url
 
-#if MIN_VERSION_hoauth2(1,0,0)
-
 parseAbsoluteURI' :: MonadThrow m => T.Text -> m U.URI
 parseAbsoluteURI' = parseAbsoluteURI
 
@@ -117,39 +108,6 @@ encodeAccessToken token =
       , idToken = OA2.idtoken <$> OA2.idToken token
       }
 
-
-#else
-
-parseAbsoluteURI' :: MonadThrow m => T.Text -> m URI
-parseAbsoluteURI' urlTxt = U.serializeURIRef' <$> parseAbsoluteURI urlTxt
-
-getExchangeToken :: S.ByteString -> S.ByteString
-getExchangeToken = id
-
-appendQueryParams :: URI -> [(S.ByteString, S.ByteString)] -> URI
-appendQueryParams uri params = OA2.appendQueryParam uri params
-
-getClientId :: T.Text -> S.ByteString
-getClientId = encodeUtf8
-
-getClientSecret :: T.Text -> S.ByteString
-getClientSecret = encodeUtf8
-
-getRedirectURI :: URI -> S.ByteString
-getRedirectURI = id
-
-encodeAccessToken :: OA2.AccessToken -> S.ByteString
-encodeAccessToken token =
-  SL.toStrict $ encode $
-    Token
-      { accessToken = decodeUtf8 $ OA2.accessToken token
-      , refreshToken = decodeUtf8 <$> OA2.refreshToken token
-      , expiresIn = OA2.expiresIn token
-      , tokenType = decodeUtf8 <$> OA2.tokenType token
-      , idToken = decodeUtf8 <$> OA2.idToken token
-      }
-
-#endif
 
 -- | Aeson parser for `OAuth2` provider.
 --
