@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -8,12 +7,11 @@ module Network.Wai.Middleware.Auth.OAuth2
   , oAuth2Parser
   , URIParseException(..)
   , parseAbsoluteURI
-  , Token(..)
   , getAccessToken
   ) where
 
-import           Data.Binary                          (Binary, encode, decode)
 import           Control.Monad.Catch
+import qualified Data.Aeson
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
@@ -26,7 +24,6 @@ import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8,
                                                        decodeUtf8With)
 import           Data.Text.Encoding.Error             (lenientDecode)
-import           GHC.Generics                         (Generic)
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.Types                   (status303, status403,
                                                        status404, status501)
@@ -58,17 +55,6 @@ data URIParseException = URIParseException U.URIParseError deriving Show
 
 instance Exception URIParseException
 
--- | The full information returned from a oauth2 request for a token.
-data Token = Token {
-      accessToken  :: T.Text
-    , refreshToken :: Maybe T.Text
-    , expiresIn    :: Maybe Int
-    , tokenType    :: Maybe T.Text
-    , idToken      :: Maybe T.Text
-    } deriving (Generic)
-
-instance Binary Token
-
 -- | Parse absolute URI and throw `URIParseException` in case it is malformed
 --
 -- @since 0.1.2.0
@@ -98,15 +84,7 @@ getRedirectURI :: U.URIRef a -> S.ByteString
 getRedirectURI = U.serializeURIRef'
 
 encodeAccessToken :: OA2.OAuth2Token -> S.ByteString
-encodeAccessToken token =
-  SL.toStrict $ encode $
-    Token
-      { accessToken = OA2.atoken $ OA2.accessToken token
-      , refreshToken = OA2.rtoken <$> OA2.refreshToken token
-      , expiresIn = OA2.expiresIn token
-      , tokenType = OA2.tokenType token
-      , idToken = OA2.idtoken <$> OA2.idToken token
-      }
+encodeAccessToken = SL.toStrict . Data.Aeson.encode
 
 
 -- | Aeson parser for `OAuth2` provider.
@@ -178,7 +156,7 @@ $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} '
 --
 -- If called on a @Request@ behind the middleware, should always return a
 -- @Just@ value.
-getAccessToken :: Request -> Maybe Token
+getAccessToken :: Request -> Maybe OA2.OAuth2Token
 getAccessToken req = do
   user <- MA.getAuthUser req
-  decode (SL.fromStrict (authUserIdentity user))
+  Data.Aeson.decodeStrict (authUserIdentity user)
