@@ -156,6 +156,8 @@ $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} '
 --
 -- If called on a @Request@ behind the middleware, should always return a
 -- @Just@ value.
+--
+-- @since 0.2.0.0
 getAccessToken :: Request -> Maybe OA2.OAuth2Token
 getAccessToken req = do
   user <- MA.getAuthUser req
