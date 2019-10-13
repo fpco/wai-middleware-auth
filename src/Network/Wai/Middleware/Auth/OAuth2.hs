@@ -10,8 +10,9 @@ module Network.Wai.Middleware.Auth.OAuth2
   , getAccessToken
   ) where
 
+import           Data.Binary                          (Binary(get, put), encode,
+                                                       decode)
 import           Control.Monad.Catch
-import qualified Data.Aeson
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
@@ -84,7 +85,26 @@ getRedirectURI :: U.URIRef a -> S.ByteString
 getRedirectURI = U.serializeURIRef'
 
 encodeAccessToken :: OA2.OAuth2Token -> S.ByteString
-encodeAccessToken = SL.toStrict . Data.Aeson.encode
+encodeAccessToken = SL.toStrict . encode . OAuth2TokenBinary
+
+newtype OAuth2TokenBinary =
+  OAuth2TokenBinary { unOAuth2TokenBinary :: OA2.OAuth2Token }
+
+instance Binary OAuth2TokenBinary where
+  put (OAuth2TokenBinary token) = do
+    put $ OA2.atoken $ OA2.accessToken token
+    put $ OA2.rtoken <$> OA2.refreshToken token
+    put $ OA2.expiresIn token
+    put $ OA2.tokenType token
+    put $ OA2.idtoken <$> OA2.idToken token
+  get = do
+    accessToken <- OA2.AccessToken <$> get
+    refreshToken <- fmap OA2.RefreshToken <$> get
+    expiresIn <- get
+    tokenType <- get
+    idToken <- fmap OA2.IdToken <$> get
+    pure $ OAuth2TokenBinary $
+      OA2.OAuth2Token accessToken refreshToken expiresIn tokenType idToken
 
 
 -- | Aeson parser for `OAuth2` provider.
@@ -161,4 +181,4 @@ $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} '
 getAccessToken :: Request -> Maybe OA2.OAuth2Token
 getAccessToken req = do
   user <- MA.getAuthUser req
-  Data.Aeson.decodeStrict (authUserIdentity user)
+  unOAuth2TokenBinary <$> decode (SL.fromStrict (authUserIdentity user))
