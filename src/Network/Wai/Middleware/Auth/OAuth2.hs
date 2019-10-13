@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP               #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -8,8 +9,11 @@ module Network.Wai.Middleware.Auth.OAuth2
   , oAuth2Parser
   , URIParseException(..)
   , parseAbsoluteURI
+  , Token(..)
+  , getAccessToken
   ) where
 
+import           Data.Binary                          (Binary, encode, decode)
 import           Control.Monad.Catch
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
@@ -21,12 +25,15 @@ import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
+import           GHC.Generics                         (Generic)
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.Types                   (status303, status403,
                                                        status404, status501)
 import qualified Network.OAuth.OAuth2                 as OA2
-import           Network.Wai                          (queryString, responseLBS)
+import           Network.Wai                          (Request, queryString,
+                                                       responseLBS)
 import           Network.Wai.Auth.Tools               (toLowerUnderscore)
+import qualified Network.Wai.Middleware.Auth          as MA
 import           Network.Wai.Middleware.Auth.Provider
 import qualified URI.ByteString                       as U
 
@@ -35,6 +42,7 @@ import           Data.Text.Encoding                   (decodeUtf8With)
 import           Data.Text.Encoding.Error             (lenientDecode)
 import           URI.ByteString                       (URI)
 #else
+import           Data.Text.Encoding                   (decodeUtf8)
 type URI = OA2.URI
 #endif
 
@@ -57,6 +65,17 @@ data URIParseException = URIParseException U.URIParseError deriving Show
 
 instance Exception URIParseException
 
+-- | The full information returned from a oauth2 request for a token.
+data Token = Token {
+      accessToken  :: T.Text
+    , refreshToken :: Maybe T.Text
+    , expiresIn    :: Maybe Int
+    , tokenType    :: Maybe T.Text
+    , idToken      :: Maybe T.Text
+    } deriving (Generic)
+
+instance Binary Token
+
 -- | Parse absolute URI and throw `URIParseException` in case it is malformed
 --
 -- @since 0.1.2.0
@@ -65,7 +84,6 @@ parseAbsoluteURI urlTxt = do
   case U.parseURI U.strictURIParserOptions (encodeUtf8 urlTxt) of
     Left err  -> throwM $ URIParseException err
     Right url -> return url
-
 
 #if MIN_VERSION_hoauth2(1,0,0)
 
@@ -88,8 +106,17 @@ getClientSecret = id
 getRedirectURI :: U.URIRef a -> S.ByteString
 getRedirectURI = U.serializeURIRef'
 
-getAccessToken :: OA2.OAuth2Token -> S.ByteString
-getAccessToken = encodeUtf8 . OA2.atoken . OA2.accessToken
+encodeAccessToken :: OA2.OAuth2Token -> S.ByteString
+encodeAccessToken token =
+  SL.toStrict $ encode $
+    Token
+      { accessToken = OA2.atoken $ OA2.accessToken token
+      , refreshToken = OA2.rtoken <$> OA2.refreshToken token
+      , expiresIn = OA2.expiresIn token
+      , tokenType = OA2.tokenType token
+      , idToken = OA2.idtoken <$> OA2.idToken token
+      }
+
 
 #else
 
@@ -111,8 +138,16 @@ getClientSecret = encodeUtf8
 getRedirectURI :: URI -> S.ByteString
 getRedirectURI = id
 
-getAccessToken :: OA2.AccessToken -> S.ByteString
-getAccessToken = OA2.accessToken
+encodeAccessToken :: OA2.AccessToken -> S.ByteString
+encodeAccessToken token =
+  SL.toStrict $ encode $
+    Token
+      { accessToken = decodeUtf8 $ OA2.accessToken token
+      , refreshToken = decodeUtf8 <$> OA2.refreshToken token
+      , expiresIn = OA2.expiresIn token
+      , tokenType = decodeUtf8 <$> OA2.tokenType token
+      , idToken = decodeUtf8 <$> OA2.idToken token
+      }
 
 #endif
 
@@ -159,7 +194,7 @@ instance AuthProvider OAuth2 where
                eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
                case eRes of
                  Left err    -> onFailure status501 $ S8.pack $ show err
-                 Right token -> onSuccess $ getAccessToken token
+                 Right token -> onSuccess $ encodeAccessToken token
              _ ->
                case lookup "error" params of
                  (Just (Just "access_denied")) ->
@@ -180,3 +215,12 @@ instance AuthProvider OAuth2 where
 
 
 $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
+
+-- | Get the @AccessToken@ for the current user.
+--
+-- If called on a @Request@ behind the middleware, should always return a
+-- @Just@ value.
+getAccessToken :: Request -> Maybe Token
+getAccessToken req = do
+  user <- MA.getAuthUser req
+  decode (SL.fromStrict (authUserIdentity user))
