@@ -45,6 +45,7 @@ library
                      , safe-exceptions
                      , shakespeare
                      , text
+                     , time
                      , unix-compat
                      , unordered-containers
                      , uri-bytestring

@@ -21,6 +21,7 @@ module Network.Wai.Middleware.Auth
     , smartAppRoot
     , waiMiddlewareAuthVersion
     , getAuthUser
+    , getDeleteSessionHeader
     ) where
 
 import           Blaze.ByteString.Builder             (fromByteString)
@@ -37,8 +38,9 @@ import qualified Data.Vault.Lazy                      as Vault
 import           Data.Version                         (Version)
 import           Foreign.C.Types                      (CTime (..))
 import           GHC.Generics                         (Generic)
-import           Network.HTTP.Types                   (status200, status303,
-                                                       status404, status501)
+import           Network.HTTP.Types                   (Header, status200,
+                                                       status303, status404,
+                                                       status501)
 import           Network.Wai                          (Middleware, Request,
                                                        pathInfo, rawPathInfo,
                                                        rawQueryString,
@@ -297,3 +299,8 @@ getAuthUser = Vault.lookup userKey . vault
 waiMiddlewareAuthVersion :: Version
 waiMiddlewareAuthVersion = Paths.version
 
+-- | Get a response header to delete the users current session.
+--
+-- @since 0.2.0
+getDeleteSessionHeader :: AuthSettings -> Header
+getDeleteSessionHeader = deleteCookieValue . asStateKey

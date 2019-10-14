@@ -3,6 +3,7 @@
 module Network.Wai.Auth.ClientSession
   ( loadCookieValue
   , saveCookieValue
+  , deleteCookieValue
   , Key
   , getDefaultKey
   ) where
@@ -15,6 +16,8 @@ import qualified Data.ByteString.Base64.URL as B64
 import qualified Data.ByteString.Lazy       as L
 import           Data.Int                   (Int64)
 import           Data.Maybe                 (listToMaybe)
+import           Data.Time.Clock            (UTCTime(UTCTime))
+import           Data.Time.Calendar         (fromGregorian)
 import           Foreign.C.Types            (CTime (..))
 import           GHC.Generics               (Generic)
 import           Network.HTTP.Types         (Header)
@@ -23,9 +26,9 @@ import           System.PosixCompat.Time    (epochTime)
 import           Web.ClientSession          (Key, decrypt, encryptIO,
                                              getDefaultKey)
 import           Web.Cookie                 (def, parseCookies, renderSetCookie,
-                                             setCookieHttpOnly, setCookieMaxAge,
-                                             setCookieName, setCookiePath,
-                                             setCookieValue)
+                                             setCookieExpires, setCookieHttpOnly,
+                                             setCookieMaxAge, setCookieName,
+                                             setCookiePath, setCookieValue)
 
 data Wrapper value = Wrapper
   { contained :: value
@@ -78,4 +81,19 @@ saveCookieValue key name age value = do
         , setCookiePath = Just "/"
         , setCookieHttpOnly = True
         , setCookieMaxAge = Just $ fromIntegral age
+        })
+
+deleteCookieValue
+  :: S.ByteString -- ^ cookie name
+  -> Header
+deleteCookieValue name =
+  ( "Set-Cookie"
+  , toByteString $
+    renderSetCookie
+      def
+        { setCookieName = name
+        , setCookieValue = ""
+        , setCookiePath = Just "/"
+        , setCookieHttpOnly = True
+        , setCookieExpires = Just $ UTCTime (fromGregorian 1970 01 01) 0
         })
