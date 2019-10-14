@@ -221,13 +221,13 @@ mkAuthMiddleware AuthSettings {..} = do
                           onFailure
                             status501
                             "Empty user identity is not allowed"
-                        onSuccess userIdentity = do
+                        onSuccess authLoginState = do
                           CTime now <- epochTime
                           cookie <-
                             saveAuthState $
                             AuthLoggedIn $
                             AuthUser
-                            { authUserIdentity = userIdentity
+                            { authLoginState = authLoginState
                             , authProviderName =
                                 encodeUtf8 $ getProviderName provider
                             , authLoginTime = fromIntegral now
