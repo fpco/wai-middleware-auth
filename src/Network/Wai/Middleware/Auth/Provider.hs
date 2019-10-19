@@ -17,7 +17,9 @@ module Network.Wai.Middleware.Auth.Provider
   , parseProviders
   -- * User
   , AuthUser(..)
+  , AuthLoginState
   , UserIdentity
+  , authUserIdentity
   -- * Template
   , mkRouteRender
   , providersTemplate
@@ -71,7 +73,7 @@ import           Text.Hamlet                   (Render, hamlet)
 --         \@?{(ProviderUrl ["login", "complete"], [("user", "Hamlet")])}
 --         @
 --
---     * @(`UserIdentity` -> `IO` `Response`)@ - Action to call on a successfull login.
+--     * @(`AuthLoginState` -> `IO` `Response`)@ - Action to call on a successfull login.
 --     * @(`Status` -> `S.ByteString` -> `IO` `Response`)@ - Should be called in case of
 --     a failure with login process by supplying a
 --     status and a short error message.
@@ -100,7 +102,7 @@ class AuthProvider ap where
     -> Request
     -> [T.Text]
     -> Render ProviderUrl
-    -> (UserIdentity -> IO Response)
+    -> (AuthLoginState -> IO Response)
     -> (Status -> S.ByteString -> IO Response)
     -> IO Response
 
@@ -137,12 +139,19 @@ data ProviderInfo = ProviderInfo
   } deriving (Show)
 
 
--- | An arbitrary user identifer, eg. a username or an email address.
+-- | An arbitrary state that comes with logged in user, eg. a username, token or an email address.
+type AuthLoginState = S.ByteString
+
 type UserIdentity = S.ByteString
+{-# DEPRECATED UserIdentity "In favor of `AuthLoginState`" #-}
+
+authUserIdentity :: AuthUser -> UserIdentity
+authUserIdentity = authLoginState
+{-# DEPRECATED authUserIdentity "In favor of `authLoginState`" #-}
 
 -- | Representation of a user for a particular `Provider`.
 data AuthUser = AuthUser
-  { authUserIdentity :: !UserIdentity
+  { authLoginState :: !UserIdentity
   , authProviderName :: !S.ByteString
   , authLoginTime    :: !Int64
   } deriving (Generic, Show)

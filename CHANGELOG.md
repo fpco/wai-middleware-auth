@@ -1,3 +1,10 @@
+# 0.2.0.0
+========
+
+* Drop compatiblity with hoauth2 versions <= 1.0.0.
+* Add a function for getting the oauth2 token from an authenticated request.
+* Modify encoding of oauth2 session cookies. As a consequence existing cookies will be invalid.
+
 0.1.2.1
 =======
 
