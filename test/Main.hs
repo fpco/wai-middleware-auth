@@ -19,7 +19,7 @@ main =
 oAuth2TokenBinaryDuality :: Property
 oAuth2TokenBinaryDuality = property $ do
   token <- forAll oauth2TokenBinary
-  tripping token encodeToken decodeToken
+  tripping token encodeToken (Just . decodeToken)
 
 oauth2TokenBinary :: Gen OA2.OAuth2Token
 oauth2TokenBinary = do

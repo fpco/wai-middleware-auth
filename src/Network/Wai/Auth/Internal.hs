@@ -9,9 +9,9 @@ import qualified Data.ByteString                      as S
 import qualified Data.ByteString.Lazy                 as SL
 import qualified Network.OAuth.OAuth2                 as OA2
 
-decodeToken :: S.ByteString -> Maybe OA2.OAuth2Token
-decodeToken serialized =
-  unOAuth2TokenBinary <$> decode (SL.fromStrict serialized)
+decodeToken :: S.ByteString -> OA2.OAuth2Token
+decodeToken =
+  unOAuth2TokenBinary . decode . SL.fromStrict
 
 encodeToken :: OA2.OAuth2Token -> S.ByteString
 encodeToken = SL.toStrict . encode . OAuth2TokenBinary
