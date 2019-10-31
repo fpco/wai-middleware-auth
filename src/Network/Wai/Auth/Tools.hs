@@ -30,7 +30,7 @@ encodeKey = B64.encode . runPut . put
 -- of them to lower case.
 toLowerUnderscore :: String -> String
 toLowerUnderscore [] = []
-toLowerUnderscore (x:xs) = toLower x : (foldr' toLowerWithUnder [] xs)
+toLowerUnderscore (x:xs) = toLower x : foldr' toLowerWithUnder [] xs
   where
     toLowerWithUnder !y !acc
       | isLower y = y : acc

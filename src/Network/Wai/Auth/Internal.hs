@@ -1,17 +1,21 @@
+{-# OPTIONS_HADDOCK hide, not-home #-}
 module Network.Wai.Auth.Internal
-  ( encodeToken
+  ( OAuth2TokenBinary(..)
+  , encodeToken
   , decodeToken
   ) where
 
 import           Data.Binary                          (Binary(get, put), encode,
-                                                      decode)
+                                                      decodeOrFail)
 import qualified Data.ByteString                      as S
 import qualified Data.ByteString.Lazy                 as SL
 import qualified Network.OAuth.OAuth2                 as OA2
 
-decodeToken :: S.ByteString -> OA2.OAuth2Token
-decodeToken =
-  unOAuth2TokenBinary . decode . SL.fromStrict
+decodeToken :: S.ByteString -> Either String OA2.OAuth2Token
+decodeToken bs =
+  case decodeOrFail $ SL.fromStrict bs of
+    Right (_, _, token) -> Right $ unOAuth2TokenBinary token
+    Left (_, _, err) -> Left err
 
 encodeToken :: OA2.OAuth2Token -> S.ByteString
 encodeToken = SL.toStrict . encode . OAuth2TokenBinary

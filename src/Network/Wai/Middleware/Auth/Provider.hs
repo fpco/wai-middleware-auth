@@ -129,7 +129,7 @@ type Providers = HM.HashMap T.Text Provider
 type ProviderParser = (T.Text, Value -> Parser Provider)
 
 -- | Data type for rendering Provider specific urls.
-data ProviderUrl = ProviderUrl [T.Text]
+newtype ProviderUrl = ProviderUrl [T.Text]
 
 -- | Provider information used for rendering a page with list of supported providers.
 data ProviderInfo = ProviderInfo
@@ -151,7 +151,7 @@ authUserIdentity = authLoginState
 
 -- | Representation of a user for a particular `Provider`.
 data AuthUser = AuthUser
-  { authLoginState :: !UserIdentity
+  { authLoginState   :: !UserIdentity
   , authProviderName :: !S.ByteString
   , authLoginTime    :: !Int64
   } deriving (Generic, Show)

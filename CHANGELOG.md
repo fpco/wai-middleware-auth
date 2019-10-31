@@ -1,3 +1,8 @@
+# 0.2.1.0
+========
+
+* Fix a bug in deserialization of `UserIdentity`
+
 # 0.2.0.0
 ========
 

@@ -156,4 +156,4 @@ $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} '
 getAccessToken :: Request -> Maybe OA2.OAuth2Token
 getAccessToken req = do
   user <- MA.getAuthUser req
-  pure (decodeToken (authLoginState user))
+  either (const Nothing) Just $ decodeToken (authLoginState user)
