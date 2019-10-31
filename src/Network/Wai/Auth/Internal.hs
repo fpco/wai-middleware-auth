@@ -1,9 +1,20 @@
 module Network.Wai.Auth.Internal
-  ( OAuth2TokenBinary(..)
+  ( encodeToken
+  , decodeToken
   ) where
 
-import           Data.Binary                          (Binary(get, put))
+import           Data.Binary                          (Binary(get, put), encode,
+                                                      decode)
+import qualified Data.ByteString                      as S
+import qualified Data.ByteString.Lazy                 as SL
 import qualified Network.OAuth.OAuth2                 as OA2
+
+decodeToken :: S.ByteString -> OA2.OAuth2Token
+decodeToken =
+  unOAuth2TokenBinary . decode . SL.fromStrict
+
+encodeToken :: OA2.OAuth2Token -> S.ByteString
+encodeToken = SL.toStrict . encode . OAuth2TokenBinary
 
 newtype OAuth2TokenBinary =
   OAuth2TokenBinary { unOAuth2TokenBinary :: OA2.OAuth2Token }

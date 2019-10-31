@@ -10,14 +10,12 @@ module Network.Wai.Middleware.Auth.OAuth2
   , getAccessToken
   ) where
 
-import           Data.Binary                          (encode, decode)
 import           Control.Monad.Catch
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
 import qualified Data.ByteString                      as S
 import qualified Data.ByteString.Char8                as S8 (pack)
-import qualified Data.ByteString.Lazy                 as SL
 import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
@@ -30,7 +28,7 @@ import           Network.HTTP.Types                   (status303, status403,
 import qualified Network.OAuth.OAuth2                 as OA2
 import           Network.Wai                          (Request, queryString,
                                                        responseLBS)
-import           Network.Wai.Auth.Internal            (OAuth2TokenBinary(..))
+import           Network.Wai.Auth.Internal            (encodeToken, decodeToken)
 import           Network.Wai.Auth.Tools               (toLowerUnderscore)
 import qualified Network.Wai.Middleware.Auth          as MA
 import           Network.Wai.Middleware.Auth.Provider
@@ -84,10 +82,6 @@ getClientSecret = id
 getRedirectURI :: U.URIRef a -> S.ByteString
 getRedirectURI = U.serializeURIRef'
 
-encodeAccessToken :: OA2.OAuth2Token -> S.ByteString
-encodeAccessToken = SL.toStrict . encode . OAuth2TokenBinary
-
-
 -- | Aeson parser for `OAuth2` provider.
 --
 -- @since 0.1.0
@@ -131,7 +125,7 @@ instance AuthProvider OAuth2 where
                eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
                case eRes of
                  Left err    -> onFailure status501 $ S8.pack $ show err
-                 Right token -> onSuccess $ encodeAccessToken token
+                 Right token -> onSuccess $ encodeToken token
              _ ->
                case lookup "error" params of
                  (Just (Just "access_denied")) ->
@@ -162,4 +156,4 @@ $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} '
 getAccessToken :: Request -> Maybe OA2.OAuth2Token
 getAccessToken req = do
   user <- MA.getAuthUser req
-  unOAuth2TokenBinary <$> decode (SL.fromStrict (authLoginState user))
+  pure (decodeToken (authLoginState user))
