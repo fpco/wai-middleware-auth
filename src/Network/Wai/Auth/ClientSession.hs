@@ -26,9 +26,10 @@ import           System.PosixCompat.Time    (epochTime)
 import           Web.ClientSession          (Key, decrypt, encryptIO,
                                              getDefaultKey)
 import           Web.Cookie                 (def, parseCookies, renderSetCookie,
-                                             setCookieExpires, setCookieHttpOnly,
-                                             setCookieMaxAge, setCookieName,
-                                             setCookiePath, setCookieValue)
+                                             sameSiteLax, setCookieExpires,
+                                             setCookieHttpOnly, setCookieMaxAge,
+                                             setCookieName, setCookiePath,
+                                             setCookieSameSite, setCookieValue)
 
 data Wrapper value = Wrapper
   { contained :: value
@@ -81,6 +82,7 @@ saveCookieValue key name age value = do
         , setCookiePath = Just "/"
         , setCookieHttpOnly = True
         , setCookieMaxAge = Just $ fromIntegral age
+        , setCookieSameSite = Just sameSiteLax
         })
 
 deleteCookieValue
@@ -96,4 +98,5 @@ deleteCookieValue name =
         , setCookiePath = Just "/"
         , setCookieHttpOnly = True
         , setCookieExpires = Just $ UTCTime (fromGregorian 1970 01 01) 0
+        , setCookieSameSite = Just sameSiteLax
         })
