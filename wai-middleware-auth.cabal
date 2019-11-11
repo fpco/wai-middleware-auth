@@ -34,7 +34,7 @@ library
                      , case-insensitive
                      , cereal
                      , clientsession
-                     , cookie
+                     , cookie               >= 0.4.2
                      , exceptions
                      , hoauth2              >= 1.0
                      , http-client
