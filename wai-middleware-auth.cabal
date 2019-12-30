@@ -68,6 +68,7 @@ executable wai-auth
                      , cereal
                      , clientsession
                      , optparse-simple
+                     , wai-extra
                      , wai-middleware-auth
                      , warp
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
