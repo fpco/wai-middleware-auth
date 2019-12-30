@@ -18,6 +18,8 @@ import           Network.HTTP.Simple                  (getResponseBody,
                                                        httpJSON, parseRequestThrow,
                                                        setRequestHeaders)
 import           Network.HTTP.Types
+import qualified Network.OAuth.OAuth2                 as OA2
+import           Network.Wai.Auth.Internal            (decodeToken)
 import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.Provider
@@ -108,9 +110,13 @@ instance AuthProvider Google where
   getProviderName _ = "google"
   getProviderInfo = getProviderInfo . googleOAuth2
   handleLogin Google {..} req suffix renderUrl onSuccess onFailure = do
-    let onOAuth2Success accessToken = do
+    let onOAuth2Success oauth2Tokens = do
           catchAny
-            (do email <-
+            (do accessToken <-
+                  case decodeToken oauth2Tokens of
+                    Left err -> fail err
+                    Right tokens -> pure $ encodeUtf8 $ OA2.atoken $ OA2.accessToken tokens
+                email <-
                   googleEmail <$>
                   retrieveEmail googleAPIEmailEndpoint accessToken
                 let mEmail = getValidEmail googleEmailWhitelist [email]
