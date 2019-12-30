@@ -21,6 +21,7 @@ import           Network.HTTP.Types
 import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.Provider
+import           System.IO                            (hPutStrLn, stderr)
 
 
 -- | Create a google authentication provider
@@ -118,6 +119,7 @@ instance AuthProvider Google where
                   Nothing ->
                     onFailure
                       status403
-                      "No valid email with permission to access was found.") $ \_err ->
-            onFailure status501 "Issue communicating with google."
+                      "No valid email with permission to access was found.") $ \err -> do
+            hPutStrLn stderr $ "Issue communicating with Google: " ++ show err
+            onFailure status501 "Issue communicating with Google."
     handleLogin googleOAuth2 req suffix renderUrl onOAuth2Success onFailure
