@@ -15,7 +15,7 @@ import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
 import           Network.HTTP.Simple                  (getResponseBody,
-                                                       httpJSON, parseRequest,
+                                                       httpJSON, parseRequestThrow,
                                                        setRequestHeaders)
 import           Network.HTTP.Types
 import           Network.Wai.Auth.Tools               (getValidEmail)
@@ -97,7 +97,7 @@ instance FromJSON GoogleEmail where
 -- | Makes a call to google API and retrieves user's main email.
 retrieveEmail :: T.Text -> S.ByteString -> IO GoogleEmail
 retrieveEmail emailApiEndpoint accessToken = do
-  req <- parseRequest (T.unpack emailApiEndpoint)
+  req <- parseRequestThrow (T.unpack emailApiEndpoint)
   resp <- httpJSON $ setRequestHeaders headers req
   return $ getResponseBody resp
   where
