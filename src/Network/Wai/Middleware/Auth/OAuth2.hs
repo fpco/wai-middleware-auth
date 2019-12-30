@@ -125,7 +125,7 @@ instance AuthProvider OAuth2 where
                eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
                case eRes of
                  Left err    -> onFailure status501 $ S8.pack $ show err
-                 Right token -> onSuccess $ encodeToken token
+                 Right token -> onSuccess $ encodeUtf8 $ OA2.atoken $ OA2.accessToken token
              _ ->
                case lookup "error" params of
                  (Just (Just "access_denied")) ->
