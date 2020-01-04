@@ -105,6 +105,18 @@ class AuthProvider ap where
     -> (Status -> S.ByteString -> IO Response)
     -> IO Response
 
+  -- | Check if the login state in a session is still valid, and have the
+  -- opportunity to update it. Return `Nothing` to indicate a session has
+  -- expired, and the user will be directed to re-authenticate. 
+  --
+  -- The default implementation never invalidates a session once set.
+  --
+  -- @since X.Y.Z
+  refreshLoginState 
+    :: ap
+    -> AuthUser
+    -> IO (Maybe AuthUser)
+  refreshLoginState _ loginState = pure (Just loginState)
 
 -- | Generic authentication provider wrapper.
 data Provider where
@@ -153,7 +165,7 @@ data AuthUser = AuthUser
   { authLoginState   :: !UserIdentity
   , authProviderName :: !S.ByteString
   , authLoginTime    :: !Int64
-  } deriving (Generic, Show)
+  } deriving (Eq, Generic, Show)
 
 instance Binary AuthUser
 
