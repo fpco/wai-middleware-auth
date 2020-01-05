@@ -21,6 +21,7 @@ import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8,
                                                        decodeUtf8With)
 import           Data.Text.Encoding.Error             (lenientDecode)
+import           Foreign.C.Types                      (CTime (..))
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.Types                   (status303, status403,
                                                        status404, status501)
@@ -31,6 +32,7 @@ import           Network.Wai.Auth.Internal            (encodeToken, decodeToken)
 import           Network.Wai.Auth.Tools               (toLowerUnderscore)
 import qualified Network.Wai.Middleware.Auth          as MA
 import           Network.Wai.Middleware.Auth.Provider
+import           System.PosixCompat.Time              (epochTime)
 import qualified URI.ByteString                       as U
 import           URI.ByteString                       (URI)
 
@@ -142,7 +144,51 @@ instance AuthProvider OAuth2 where
                      status404
                      "Page not found. Please continue with login."
       _ -> onFailure status404 "Page not found. Please continue with login."
+  refreshLoginState OAuth2 {..} user = 
+    let loginState = authLoginState user
+    in case decodeToken loginState of
+      Left _ -> pure Nothing
+      Right tokens -> do
+        CTime now <- epochTime
+        if tokenExpired user now tokens then
+          case OA2.refreshToken tokens of
+            Nothing -> pure Nothing
+            Just refreshToken -> do
+              authEndpointURI <- parseAbsoluteURI' oa2AuthorizeEndpoint
+              accessTokenEndpointURI <- parseAbsoluteURI' oa2AccessTokenEndpoint
+              let oauth2 =
+                    OA2.OAuth2
+                    { oauthClientId = getClientId oa2ClientId
+                    , oauthClientSecret = getClientSecret oa2ClientSecret
+                    , oauthOAuthorizeEndpoint = authEndpointURI
+                    , oauthAccessTokenEndpoint = accessTokenEndpointURI
+                    -- Setting callback endpoint to `Nothing` below is a lie.
+                    -- We do have a callback endpoint but in this context
+                    -- don't have access to the function that can render it.
+                    -- We get away with this because the callback endpoint is
+                    -- not needed for obtaining a refresh token, the only
+                    -- way we use the config here constructed.
+                    , oauthCallback = Nothing
+                    }
+              man <- getGlobalManager
+              rRes <- OA2.refreshAccessToken man oauth2 refreshToken
+              case rRes of
+                Left _ -> pure Nothing
+                Right tokens' -> 
+                  let user' =
+                        user {
+                          authLoginState = encodeToken tokens',
+                          authLoginTime = fromIntegral now
+                        }
+                  in pure (Just user')
+          else
+            pure (Just user)
 
+tokenExpired :: AuthUser -> Int64 -> OA2.OAuth2Token -> Bool
+tokenExpired user now tokens =
+  case OA2.expiresIn tokens of
+    Nothing -> False
+    Just expiresIn -> authLoginTime user + (fromIntegral expiresIn) < now
 
 $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
 
