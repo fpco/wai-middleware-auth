@@ -78,11 +78,15 @@ test-suite spec
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   hs-source-dirs:      test
+  other-modules:       Spec.Network.Wai.Auth.Internal
   build-depends:       base
                      , binary
                      , bytestring
                      , hedgehog
                      , hoauth2
+                     , tasty
+                     , tasty-hedgehog
+                     , tasty-hunit
                      , text
                      , wai-middleware-auth
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
