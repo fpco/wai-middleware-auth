@@ -131,6 +131,7 @@ instance AuthProvider Provider where
 
   handleLogin (Provider p) = handleLogin p
 
+  refreshLoginState (Provider p) loginState = refreshLoginState p loginState
 
 -- | Collection of supported providers.
 type Providers = HM.HashMap T.Text Provider

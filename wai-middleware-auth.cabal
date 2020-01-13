@@ -42,6 +42,7 @@ library
                      , http-conduit
                      , http-reverse-proxy
                      , http-types
+                     , jose
                      , regex-posix
                      , safe-exceptions
                      , shakespeare
@@ -79,16 +80,23 @@ test-suite spec
   main-is:             Main.hs
   hs-source-dirs:      test
   other-modules:       Spec.Network.Wai.Auth.Internal
+                     , Spec.Network.Wai.Middleware.Auth.OAuth2
   build-depends:       base
+                     , aeson
                      , binary
                      , bytestring
+                     , cookie
                      , hedgehog
                      , hoauth2
+                     , http-types
                      , tasty
                      , tasty-hedgehog
                      , tasty-hunit
                      , text
+                     , wai
+                     , wai-extra
                      , wai-middleware-auth
+                     , warp
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
 
 source-repository head
