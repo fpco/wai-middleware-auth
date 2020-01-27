@@ -114,9 +114,10 @@ class AuthProvider ap where
   -- @since X.Y.Z
   refreshLoginState 
     :: ap
+    -> Request
     -> AuthUser
-    -> IO (Maybe AuthUser)
-  refreshLoginState _ loginState = pure (Just loginState)
+    -> IO (Maybe (Request, AuthUser))
+  refreshLoginState _ req loginState = pure (Just (req, loginState))
 
 -- | Generic authentication provider wrapper.
 data Provider where
@@ -131,7 +132,7 @@ instance AuthProvider Provider where
 
   handleLogin (Provider p) = handleLogin p
 
-  refreshLoginState (Provider p) loginState = refreshLoginState p loginState
+  refreshLoginState (Provider p) = refreshLoginState p 
 
 -- | Collection of supported providers.
 type Providers = HM.HashMap T.Text Provider

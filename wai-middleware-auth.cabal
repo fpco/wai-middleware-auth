@@ -16,6 +16,7 @@ library
                        Network.Wai.Middleware.Auth.OAuth2
                        Network.Wai.Middleware.Auth.OAuth2.Github
                        Network.Wai.Middleware.Auth.OAuth2.Google
+                       Network.Wai.Middleware.Auth.OpenIDConnect
                        Network.Wai.Middleware.Auth.Provider
                        Network.Wai.Auth.Executable
                        Network.Wai.Auth.Internal
@@ -43,6 +44,8 @@ library
                      , http-reverse-proxy
                      , http-types
                      , jose
+                     , microlens
+                     , mtl
                      , regex-posix
                      , safe-exceptions
                      , shakespeare

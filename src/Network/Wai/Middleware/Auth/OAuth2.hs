@@ -14,17 +14,21 @@ import           Control.Monad.Catch
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
+import           Data.Int                             (Int64)
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
+import           Foreign.C.Types                      (CTime (..))
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import qualified Network.OAuth.OAuth2                 as OA2
 import           Network.Wai                          (Request)
-import           Network.Wai.Auth.Internal            (decodeToken, oauth2Login, 
-                                                       oauth2RefreshLogin)
+import           Network.Wai.Auth.Internal            (decodeToken, encodeToken,
+                                                       oauth2Login,
+                                                       refreshTokens)
 import           Network.Wai.Auth.Tools               (toLowerUnderscore)
 import qualified Network.Wai.Middleware.Auth          as MA
 import           Network.Wai.Middleware.Auth.Provider
+import           System.PosixCompat.Time              (epochTime)
 import qualified URI.ByteString                       as U
 
 -- | General OAuth2 authentication `Provider`.
@@ -55,9 +59,6 @@ parseAbsoluteURI urlTxt = do
     Left err  -> throwM $ URIParseException err
     Right url -> return url
 
-parseAbsoluteURI' :: MonadThrow m => T.Text -> m U.URI
-parseAbsoluteURI' = parseAbsoluteURI
-
 getClientId :: T.Text -> T.Text
 getClientId = id
 
@@ -75,9 +76,9 @@ instance AuthProvider OAuth2 where
   getProviderName _ = "oauth2"
   getProviderInfo = oa2ProviderInfo
   handleLogin oa2@OAuth2 {..} req suffix renderUrl onSuccess onFailure = do
-    authEndpointURI <- parseAbsoluteURI' oa2AuthorizeEndpoint
-    accessTokenEndpointURI <- parseAbsoluteURI' oa2AccessTokenEndpoint
-    callbackURI <- parseAbsoluteURI' $ renderUrl (ProviderUrl ["complete"]) []
+    authEndpointURI <- parseAbsoluteURI oa2AuthorizeEndpoint
+    accessTokenEndpointURI <- parseAbsoluteURI oa2AccessTokenEndpoint
+    callbackURI <- parseAbsoluteURI $ renderUrl (ProviderUrl ["complete"]) []
     let oauth2 =
           OA2.OAuth2
           { oauthClientId = getClientId oa2ClientId
@@ -96,9 +97,9 @@ instance AuthProvider OAuth2 where
       suffix
       onSuccess
       onFailure
-  refreshLoginState OAuth2 {..} user = do
-    authEndpointURI <- parseAbsoluteURI' oa2AuthorizeEndpoint
-    accessTokenEndpointURI <- parseAbsoluteURI' oa2AccessTokenEndpoint
+  refreshLoginState OAuth2 {..} req user = do
+    authEndpointURI <- parseAbsoluteURI oa2AuthorizeEndpoint
+    accessTokenEndpointURI <- parseAbsoluteURI oa2AccessTokenEndpoint
     let oauth2 =
           OA2.OAuth2
           { oauthClientId = getClientId oa2ClientId
@@ -114,7 +115,30 @@ instance AuthProvider OAuth2 where
           , oauthCallback = Nothing
           }
     man <- getGlobalManager
-    oauth2RefreshLogin oauth2 man user
+    let loginState = authLoginState user
+    case decodeToken loginState of
+      Left _ -> pure Nothing
+      Right tokens -> do
+        CTime now <- epochTime
+        if tokenExpired user now tokens then do
+          rRes <- refreshTokens tokens man oauth2
+          case rRes of
+            Nothing -> pure Nothing
+            Just newTokens -> 
+              let user' =
+                    user {
+                      authLoginState = encodeToken newTokens,
+                      authLoginTime = fromIntegral now
+                    }
+              in pure (Just (req, user'))
+        else
+          pure (Just (req, user))
+
+tokenExpired :: AuthUser -> Int64 -> OA2.OAuth2Token -> Bool
+tokenExpired user now tokens =
+  case OA2.expiresIn tokens of
+    Nothing -> False
+    Just expiresIn -> authLoginTime user + (fromIntegral expiresIn) < now
 
 $(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
 

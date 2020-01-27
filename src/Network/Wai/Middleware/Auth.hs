@@ -284,19 +284,19 @@ mkAuthMiddleware AuthSettings {..} = do
             let req' = req {vault = Vault.insert userKey user $ vault req}
             in app req' respond
           Just provider -> do
-            refreshResult <- refreshLoginState provider user
+            refreshResult <- refreshLoginState provider req user
             case refreshResult of
               Nothing ->
                 -- The session has expired, the user needs to re-authenticate.
                 enforceLogin "/" req respond
-              Just user' ->
-                let req' = req {vault = Vault.insert userKey user' $ vault req}
+              Just (req', user') ->
+                let req'' = req' {vault = Vault.insert userKey user' $ vault req'}
                     respond' response 
                       | user' == user = respond response
                       | otherwise = do
                           cookieHeader <- saveAuthState (AuthLoggedIn user')
                           respond $ mapResponseHeaders (cookieHeader :) response 
-                in app req' respond'
+                in app req'' respond'
       Just (AuthNeedRedirect url) -> enforceLogin url req respond
       Nothing -> enforceLogin "/" req respond
 
