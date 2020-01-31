@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Network.Wai.Middleware.Auth.OpenIDConnect
   ( OpenIDConnect
+  , Metadata(..)
   , discover
   , getAccessToken
   , getIdToken
@@ -95,6 +96,8 @@ data Metadata
   deriving (Generic)
 
 instance Aeson.FromJSON Metadata
+
+instance Aeson.ToJSON Metadata
 
 instance AuthProvider OpenIDConnect where
   getProviderName _ = "oidc"

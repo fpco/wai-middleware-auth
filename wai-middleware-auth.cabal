@@ -84,6 +84,7 @@ test-suite spec
   hs-source-dirs:      test
   other-modules:       Spec.Network.Wai.Auth.Internal
                      , Spec.Network.Wai.Middleware.Auth.OAuth2
+                     , Spec.Network.Wai.Middleware.Auth.OpenIDConnect
   build-depends:       base
                      , aeson
                      , binary
@@ -92,10 +93,15 @@ test-suite spec
                      , hedgehog
                      , hoauth2
                      , http-types
+                     , jose
+                     , microlens
+                     , mtl
                      , tasty
                      , tasty-hedgehog
                      , tasty-hunit
                      , text
+                     , time
+                     , uri-bytestring
                      , wai
                      , wai-extra
                      , wai-middleware-auth
