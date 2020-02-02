@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards   #-}     
 {-# LANGUAGE OverloadedStrings #-}
-module Network.Wai.Middleware.Auth.OpenIDConnect
+module Network.Wai.Middleware.Auth.OIDC
   ( OpenIDConnect
   , discover
   , getAccessToken

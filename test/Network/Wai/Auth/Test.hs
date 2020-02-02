@@ -28,7 +28,6 @@ import qualified Network.HTTP.Types.Status              as Status
 import qualified Network.OAuth.OAuth2                   as OA2
 import qualified Network.Wai as Wai
 import           Network.Wai.Auth.Internal              (Metadata(..))
-import           Network.Wai.Middleware.Auth.OpenIDConnect 
 import           Network.Wai.Test                       (Session, SResponse,
                                                          defaultRequest,
                                                          request, setPath)

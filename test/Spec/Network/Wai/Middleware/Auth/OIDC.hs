@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Spec.Network.Wai.Middleware.Auth.OpenIDConnect (tests) where
+module Spec.Network.Wai.Middleware.Auth.OIDC (tests) where
 
 import           Control.Monad                          (void)
 import           Control.Monad.IO.Class                 (liftIO)
@@ -18,7 +18,7 @@ import           Network.Wai.Auth.Test                  (ChangeProvider,
                                                          parseURI)
 import qualified Network.Wai.Handler.Warp               as Warp
 import qualified Network.Wai.Middleware.Auth            as Auth
-import           Network.Wai.Middleware.Auth.OpenIDConnect 
+import           Network.Wai.Middleware.Auth.OIDC 
 import           Network.Wai.Middleware.Auth.Provider   (Provider(..))
 import           Network.Wai.Test                       (Session, assertHeader,
                                                          assertStatus,
@@ -30,7 +30,7 @@ import qualified URI.ByteString                         as U
 import qualified Web.Cookie                             as Cookie
 
 tests :: TestTree
-tests = testGroup "Network.Wai.Auth.OpenIDConnect"
+tests = testGroup "Network.Wai.Auth.OIDC"
   [ testCase "when a request without a session is made then redirect to re-authorize" $
       runSessionWithProvider const200 $ \host _ -> do
         redirect1 <- get "/hi"

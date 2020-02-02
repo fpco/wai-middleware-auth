@@ -16,7 +16,7 @@ library
                        Network.Wai.Middleware.Auth.OAuth2
                        Network.Wai.Middleware.Auth.OAuth2.Github
                        Network.Wai.Middleware.Auth.OAuth2.Google
-                       Network.Wai.Middleware.Auth.OpenIDConnect
+                       Network.Wai.Middleware.Auth.OIDC
                        Network.Wai.Middleware.Auth.Provider
                        Network.Wai.Auth.Executable
                        Network.Wai.Auth.Internal
@@ -85,7 +85,7 @@ test-suite spec
   other-modules:       Network.Wai.Auth.Test
                      , Spec.Network.Wai.Auth.Internal
                      , Spec.Network.Wai.Middleware.Auth.OAuth2
-                     , Spec.Network.Wai.Middleware.Auth.OpenIDConnect
+                     , Spec.Network.Wai.Middleware.Auth.OIDC
   build-depends:       base
                      , aeson
                      , binary
