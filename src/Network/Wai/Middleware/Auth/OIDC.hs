@@ -1,17 +1,25 @@
 {-# LANGUAGE RecordWildCards   #-}     
 {-# LANGUAGE OverloadedStrings #-}
+-- | An OpenID connect provider.
+--
+-- OpenID Connect is a simple identity layer on top of the OAuth2 protocol.
+-- Learn more about it here: <https://openid.net/connect/>
+--
+-- @since 0.2.3.0
 module Network.Wai.Middleware.Auth.OIDC
-  ( OpenIDConnect
+  ( -- * Creating a provider
+    OpenIDConnect
   , discover
-  , getAccessToken
-  , getIdToken
-  -- * Customizing an OpenIDConnect provider
+  -- * Customizing a provider
   , oidcClientId
   , oidcClientSecret
   , oidcProviderInfo
   , oidcManager
   , oidcScopes
   , oidcAllowedSkew
+  -- * Accessing session data
+  , getAccessToken
+  , getIdToken
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -50,6 +58,9 @@ import qualified URI.ByteString                       as U
 
 -- | An Open ID Connect provider.
 --
+-- To create a value use `discover` to download configuration for an existing
+-- provider, then use various setter functions to customize it.
+--
 -- @since 0.2.3.0
 data OpenIDConnect
   = OpenIDConnect
@@ -58,20 +69,32 @@ data OpenIDConnect
       -- | The client id this application is registered with at the Open ID
       -- Connect provider. The default is an empty string, you will need to
       -- overwrite this.
+      --
+      -- @since 0.2.3.0
       , oidcClientId :: T.Text
       -- | The client secret of this application. The default is an empty
       -- string, you will need to overwrite this.
+      --
+      -- @since 0.2.3.0
       , oidcClientSecret :: T.Text
       -- | The information for this provider. The default contains some
       -- placeholder texts. If you're using the provider screen you'll want to
       -- overwrite this.
+      --
+      -- @since 0.2.3.0
       , oidcProviderInfo :: ProviderInfo
       -- | The HTTP manager to use. Defaults to the global manager.
+      --
+      -- @since 0.2.3.0
       , oidcManager :: Manager
       -- | The scopes to set. Defaults to only the "openid" scope.
+      --
+      -- @since 0.2.3.0
       , oidcScopes :: [T.Text]
       -- | The amount of clock skew to allow when validating id tokens. Defaults
       -- to 0.
+      --
+      -- @since 0.2.3.0
       , oidcAllowedSkew :: Clock.NominalDiffTime
       }
 
@@ -116,7 +139,7 @@ instance AuthProvider OpenIDConnect where
           Just claims -> 
             pure (Just (storeClaims claims req, user))
 
--- | Obtain configuration of an OpenID Connect from its discovery endpoint.
+-- | Fetch configuration for a provider from its discovery endpoint.
 --
 -- @since 0.2.3.0
 discover :: U.URI -> IO OpenIDConnect
@@ -169,10 +192,35 @@ validateIdToken' oidc tokens =
     Just idToken ->
       either (const Nothing) Just <$> validateIdToken oidc idToken
 
+-- The validation of the ID token below is stricter then specified in the OIDC
+-- spec, to make the job of validating tokens easier. If this is too limiting
+-- for your user case please open an issue.
+--
+-- Full spec for ID token validation:
+-- https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation
+--
+-- Ways in which the validation below is stricter then the spec requires:
+-- - We don't allow the `aud` claim to contain any audiences beyond ourselves.
 validationSettings :: OpenIDConnect -> JWT.JWTValidationSettings
 validationSettings oidc =
-  JWT.defaultJWTValidationSettings (validateAudience oidc)
+  -- The Client MUST validate that the aud (audience) Claim contains its
+  -- client_id value registered at the Issuer identified by the iss (issuer)
+  -- Claim as an audience. The aud (audience) Claim MAY contain an array with
+  -- more than one element. The ID Token MUST be rejected if the ID Token does
+  -- not list the Client as a valid audience, or if it contains additional
+  -- audiences not trusted by the Client.
+  validateAudience oidc
+    -- If the ID Token is encrypted, decrypt it using the keys and algorithms
+    -- that the Client specified during Registration that the OP was to use to
+    -- encrypt the ID Token. If encryption was negotiated with the OP at
+    -- Registration time and the ID Token is not encrypted, the RP SHOULD
+    -- reject it.
+    & JWT.defaultJWTValidationSettings
+    -- The current time MUST be before the time represented by the exp Claim.
     & Lens.set JWT.jwtValidationSettingsCheckIssuedAt True
+    -- The Issuer Identifier for the OpenID Provider (which is typically
+    -- obtained during Discovery) MUST exactly match the value of the iss
+    -- (issuer) Claim.
     & Lens.set JWT.jwtValidationSettingsIssuerPredicate (validateIssuer oidc)
     & Lens.set JWT.jwtValidationSettingsAllowedSkew (oidcAllowedSkew oidc)
 
@@ -203,6 +251,9 @@ storeClaims claims req =
 --
 -- If called on a @Request@ behind the middleware, should always return a
 -- @Just@ value.
+--
+-- The token returned was validated when the request was processed by the
+-- middleware.
 --
 -- @since 0.2.3.0
 getIdToken :: Request -> Maybe JWT.ClaimsSet
