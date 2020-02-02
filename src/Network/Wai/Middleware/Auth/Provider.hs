@@ -111,7 +111,7 @@ class AuthProvider ap where
   --
   -- The default implementation never invalidates a session once set.
   --
-  -- @since X.Y.Z
+  -- @since 0.2.3.0
   refreshLoginState 
     :: ap
     -> Request

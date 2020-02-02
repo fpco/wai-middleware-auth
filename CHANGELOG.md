@@ -1,22 +1,27 @@
-# 0.2.3.0
-========
+0.2.3.0
+=======
 
 * Support `hoauth2-1.11.0`
 * Expose `decodeKey`
+* OAuth2 provider remove a session when an access token expires. It will use a
+  refresh token if one is available to create a new session. If no refresh token
+  is available it will redirect the user to re-authenticate.
+* Providers can define logic for refreshing a session without user intervention.
+* Add an OpenID Connect provider.
 
-# 0.2.2.0
-========
+0.2.2.0
+=======
 
 * Add request logging to executable
 * Newer multistage Docker build system
 
-# 0.2.1.0
-========
+0.2.1.0
+=======
 
 * Fix a bug in deserialization of `UserIdentity`
 
-# 0.2.0.0
-========
+0.2.0.0
+=======
 
 * Drop compatiblity with hoauth2 versions <= 1.0.0.
 * Add a function for getting the oauth2 token from an authenticated request.

@@ -53,7 +53,7 @@ import qualified URI.ByteString                       as U
 
 -- | An Open ID Connect provider.
 --
--- @since X.Y.Z
+-- @since 0.2.3.0
 data OpenIDConnect
   = OpenIDConnect
       { oidcMetadata :: Metadata
@@ -141,6 +141,8 @@ instance AuthProvider OpenIDConnect where
             pure (Just (storeClaims claims req, user))
 
 -- | Obtain configuration of an OpenID Connect from its discovery endpoint.
+--
+-- @since 0.2.3.0
 discover :: U.URI -> IO OpenIDConnect
 discover base = do
   let uri = base { U.uriPath = "/.well-known/openid-configuration" }
@@ -223,10 +225,10 @@ storeClaims claims req =
 
 -- | Get the @IdToken@ for the current user.
 --
--- If called on a @Request@ behind the middleware, should almost return a
+-- If called on a @Request@ behind the middleware, should always return a
 -- @Just@ value.
 --
--- @since X.Y.Z
+-- @since 0.2.3.0
 getIdToken :: Request -> Maybe JWT.ClaimsSet
 getIdToken req = Vault.lookup idTokenKey (vault req)
 
