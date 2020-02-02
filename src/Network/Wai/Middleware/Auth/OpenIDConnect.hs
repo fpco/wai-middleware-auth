@@ -1,9 +1,7 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE RecordWildCards   #-}     
 {-# LANGUAGE OverloadedStrings #-}
 module Network.Wai.Middleware.Auth.OpenIDConnect
   ( OpenIDConnect
-  , Metadata(..)
   , discover
   , getAccessToken
   , getIdToken
@@ -20,7 +18,6 @@ import           Control.Applicative                  ((<|>))
 import qualified Crypto.JOSE                          as JOSE
 import qualified Crypto.JWT                           as JWT
 import           Control.Monad.Except                 (runExceptT)
-import qualified Data.Aeson                           as Aeson
 import qualified Data.ByteString.Char8                as S8
 import           Data.Function                        ((&))
 import qualified Data.Time.Clock                      as Clock
@@ -30,7 +27,6 @@ import qualified Data.Text.Lazy                       as TL
 import qualified Data.Text.Lazy.Encoding              as TLE
 import qualified Data.Vault.Lazy                      as Vault
 import           Foreign.C.Types                      (CTime (..))
-import           GHC.Generics                         (Generic)
 import qualified Lens.Micro                           as Lens
 import qualified Lens.Micro.Extras                    as Lens.Extras
 import           Network.HTTP.Simple                  (httpJSON,
@@ -42,7 +38,8 @@ import qualified Network.OAuth.OAuth2                 as OA2
 import           Network.HTTP.Client                  (Manager)
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.Wai                          (Request, vault)
-import           Network.Wai.Auth.Internal            (decodeToken, encodeToken,
+import           Network.Wai.Auth.Internal            (Metadata(..),
+                                                       decodeToken, encodeToken,
                                                        oauth2Login,
                                                        refreshTokens)
 import           Network.Wai.Middleware.Auth.Provider
@@ -77,27 +74,6 @@ data OpenIDConnect
       -- to 0.
       , oidcAllowedSkew :: Clock.NominalDiffTime
       }
-
-data Metadata
-  = Metadata
-      { issuer :: T.Text
-      , authorizationEndpoint :: U.URI
-      , tokenEndpoint :: U.URI
-      , userinfoEndpoint :: Maybe T.Text
-      , revocationEndpoint :: Maybe T.Text
-      , jwksUri :: T.Text
-      , responseTypesSupported :: [T.Text]
-      , subjectTypesSupported :: [T.Text]
-      , idTokenSigningAlgValuesSupported :: [T.Text]
-      , scopesSupported :: Maybe [T.Text]
-      , tokenEndpointAuthMethodsSupported :: Maybe [T.Text]
-      , claimsSupported :: Maybe [T.Text]
-      }
-  deriving (Generic)
-
-instance Aeson.FromJSON Metadata
-
-instance Aeson.ToJSON Metadata
 
 instance AuthProvider OpenIDConnect where
   getProviderName _ = "oidc"

@@ -1,15 +1,18 @@
 {-# OPTIONS_HADDOCK hide, not-home #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 module Network.Wai.Auth.Internal
   ( OAuth2TokenBinary(..)
+  , Metadata(..)
   , encodeToken
   , decodeToken
   , oauth2Login
   , refreshTokens
   ) where
 
+import qualified Data.Aeson                           as Aeson
 import           Data.Binary                          (Binary(get, put), encode,
                                                       decodeOrFail)
 import qualified Data.ByteString                      as S
@@ -19,6 +22,7 @@ import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8,
                                                        decodeUtf8With)
 import           Data.Text.Encoding.Error             (lenientDecode)
+import           GHC.Generics                         (Generic)
 import           Network.HTTP.Client                  (Manager)
 import           Network.HTTP.Types                   (Status, status303,
                                                        status403, status404,
@@ -128,3 +132,24 @@ appendQueryParams uri params =
 
 getRedirectURI :: U.URIRef a -> S.ByteString
 getRedirectURI = U.serializeURIRef'
+
+data Metadata
+  = Metadata
+      { issuer :: T.Text
+      , authorizationEndpoint :: U.URI
+      , tokenEndpoint :: U.URI
+      , userinfoEndpoint :: Maybe T.Text
+      , revocationEndpoint :: Maybe T.Text
+      , jwksUri :: T.Text
+      , responseTypesSupported :: [T.Text]
+      , subjectTypesSupported :: [T.Text]
+      , idTokenSigningAlgValuesSupported :: [T.Text]
+      , scopesSupported :: Maybe [T.Text]
+      , tokenEndpointAuthMethodsSupported :: Maybe [T.Text]
+      , claimsSupported :: Maybe [T.Text]
+      }
+  deriving (Generic)
+
+instance Aeson.FromJSON Metadata
+
+instance Aeson.ToJSON Metadata
