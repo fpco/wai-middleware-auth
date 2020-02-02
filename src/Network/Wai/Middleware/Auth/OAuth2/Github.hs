@@ -17,6 +17,8 @@ import           Network.HTTP.Simple                  (getResponseBody,
                                                        httpJSON, parseRequest,
                                                        setRequestHeaders)
 import           Network.HTTP.Types
+import qualified Network.OAuth.OAuth2                 as OA2
+import           Network.Wai.Auth.Internal            (decodeToken)
 import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.Provider
@@ -114,9 +116,13 @@ instance AuthProvider Github where
   getProviderName _ = "github"
   getProviderInfo = getProviderInfo . githubOAuth2
   handleLogin Github {..} req suffix renderUrl onSuccess onFailure = do
-    let onOAuth2Success accessToken = do
+    let onOAuth2Success oauth2Tokens = do
           catchAny
-            (do emails <-
+            (do accessToken <-
+                  case decodeToken oauth2Tokens of
+                    Left err -> fail err
+                    Right tokens -> pure $ encodeUtf8 $ OA2.atoken $ OA2.accessToken tokens
+                emails <-
                   map githubEmail <$>
                   retrieveEmails
                     githubAppName

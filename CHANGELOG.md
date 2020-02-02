@@ -1,3 +1,9 @@
+# 0.2.2.0
+========
+
+* Add request logging to executable
+* Newer multistage Docker build system
+
 # 0.2.1.0
 ========
 

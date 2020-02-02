@@ -15,12 +15,15 @@ import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
 import           Network.HTTP.Simple                  (getResponseBody,
-                                                       httpJSON, parseRequest,
+                                                       httpJSON, parseRequestThrow,
                                                        setRequestHeaders)
 import           Network.HTTP.Types
+import qualified Network.OAuth.OAuth2                 as OA2
+import           Network.Wai.Auth.Internal            (decodeToken)
 import           Network.Wai.Auth.Tools               (getValidEmail)
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.Provider
+import           System.IO                            (hPutStrLn, stderr)
 
 
 -- | Create a google authentication provider
@@ -96,7 +99,7 @@ instance FromJSON GoogleEmail where
 -- | Makes a call to google API and retrieves user's main email.
 retrieveEmail :: T.Text -> S.ByteString -> IO GoogleEmail
 retrieveEmail emailApiEndpoint accessToken = do
-  req <- parseRequest (T.unpack emailApiEndpoint)
+  req <- parseRequestThrow (T.unpack emailApiEndpoint)
   resp <- httpJSON $ setRequestHeaders headers req
   return $ getResponseBody resp
   where
@@ -107,9 +110,13 @@ instance AuthProvider Google where
   getProviderName _ = "google"
   getProviderInfo = getProviderInfo . googleOAuth2
   handleLogin Google {..} req suffix renderUrl onSuccess onFailure = do
-    let onOAuth2Success accessToken = do
+    let onOAuth2Success oauth2Tokens = do
           catchAny
-            (do email <-
+            (do accessToken <-
+                  case decodeToken oauth2Tokens of
+                    Left err -> fail err
+                    Right tokens -> pure $ encodeUtf8 $ OA2.atoken $ OA2.accessToken tokens
+                email <-
                   googleEmail <$>
                   retrieveEmail googleAPIEmailEndpoint accessToken
                 let mEmail = getValidEmail googleEmailWhitelist [email]
@@ -118,6 +125,7 @@ instance AuthProvider Google where
                   Nothing ->
                     onFailure
                       status403
-                      "No valid email with permission to access was found.") $ \_err ->
-            onFailure status501 "Issue communicating with google."
+                      "No valid email with permission to access was found.") $ \err -> do
+            hPutStrLn stderr $ "Issue communicating with Google: " ++ show err
+            onFailure status501 "Issue communicating with Google."
     handleLogin googleOAuth2 req suffix renderUrl onOAuth2Success onFailure

@@ -11,6 +11,7 @@ import           Network.Wai.Middleware.Auth
 import           Network.Wai.Middleware.Auth.OAuth2
 import           Network.Wai.Middleware.Auth.OAuth2.Github
 import           Network.Wai.Middleware.Auth.OAuth2.Google
+import           Network.Wai.Middleware.RequestLogger      (logStdout)
 import           Options.Applicative.Simple
 import           Web.ClientSession
 
@@ -78,7 +79,7 @@ main = do
       authConfig <- readAuthConfig configFile
       mkMain authConfig [githubParser, googleParser, oAuth2Parser] $ \port app -> do
         putStrLn $ "Listening on port " ++ show port
-        run port app
+        run port $ logStdout app
     KeyFile (KeyOptions {..}) -> do
       let key2str =
             if keyBase64

@@ -12,15 +12,10 @@ dinamo:
 build:
 	@stack build
 
-## Builds base image
-build-base:
-	@docker build -t fpco/wai-auth-base-image -f Dockerfile.base .
-
 ## Build docker image (builds project in a container first)
 build-image: build-base
-	@stack --stack-yaml stack-docker.yaml build
-	@stack --stack-yaml stack-docker.yaml image container
-	@docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${VERSION}
+	@docker build . --tag ${IMAGE_NAME}:${VERSION}
+	@docker tag ${IMAGE_NAME}:${VERSION} ${IMAGE_NAME}
 
 ## Push docker image
 push-image:
