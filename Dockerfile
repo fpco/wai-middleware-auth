@@ -16,6 +16,9 @@ RUN stack install --local-bin-path /output --stack-yaml /src/stack.yaml
 # Runtime image
 FROM fpco/pid1
 
+# Set lang env var appropriately
+ENV LANG C.UTF-8
+
 # Install necessary dependencies for making SSL connections
 ENV DEBIAN_FRONTEND noninteractive
 
