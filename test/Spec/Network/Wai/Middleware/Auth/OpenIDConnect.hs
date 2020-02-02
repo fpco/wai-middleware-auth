@@ -9,6 +9,8 @@ import qualified Crypto.JOSE                            as JOSE
 import           Data.Function                          ((&))
 import qualified Data.Text                              as T
 import           GHC.Exts                               (fromList, fromString)
+import qualified Network.HTTP.Types.Status              as Status
+import qualified Network.Wai                            as Wai
 import           Network.Wai.Auth.Test                  (ChangeProvider,
                                                          FakeProviderConf(..),
                                                          fakeProvider,
@@ -30,7 +32,7 @@ import qualified Web.Cookie                             as Cookie
 tests :: TestTree
 tests = testGroup "Network.Wai.Auth.OpenIDConnect"
   [ testCase "when a request without a session is made then redirect to re-authorize" $
-      runSessionWithProvider $ \host _ -> do
+      runSessionWithProvider const200 $ \host _ -> do
         redirect1 <- get "/hi"
         assertStatus 303 redirect1
         assertHeader "Location" "/prefix" redirect1
@@ -45,20 +47,20 @@ tests = testGroup "Network.Wai.Auth.OpenIDConnect"
           redirect3
 
   , testCase "when a request is made with a valid session then pass the request through" $
-      runSessionWithProvider $ \_ _ -> do
+      runSessionWithProvider const200 $ \_ _ -> do
         createSession
         response <- get "/some/endpoint"
         assertStatus 200 response
 
   , testCase "when an ID token expired and no refresh token is available then redirect to re-authorize" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { jwtExpiresIn = -600, returnRefreshToken = False })
         createSession
         response <- get "/some/endpoint"
         assertStatus 303 response
 
   , testCase "when an ID token expired then use a refresh token" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { jwtExpiresIn = -600 })
         createSession
         changeProvider (\c -> c { jwtExpiresIn = 600 })
@@ -66,7 +68,7 @@ tests = testGroup "Network.Wai.Auth.OpenIDConnect"
         assertStatus 200 response
 
   , testCase "when a request is made with an invalid session redirect to re-authorize" $ 
-      runSessionWithProvider $ \_ _ -> do
+      runSessionWithProvider const200 $ \_ _ -> do
         -- First create a known valid session, so we can see that it's the act
         -- of corrupting it that makes the test fail.
         createSession
@@ -78,29 +80,55 @@ tests = testGroup "Network.Wai.Auth.OpenIDConnect"
         response <- get "/some/endpoint"
         assertStatus 303 response
 
+  , testCase "when a request is made to the complete endpoint then create a session" $
+      runSessionWithProvider const200 $ \_ _ -> do
+        response <- get "/prefix/oidc/complete?code=1234"
+        assertStatus 303 response
+        assertHeader "location" "/" response
+
+  , testCase "when a request with a valid session is made then the app can access the access token" $
+      let app req respond = 
+            case getAccessToken req of
+              Nothing -> respond $ Wai.responseLBS Status.badRequest400 [] ""
+              Just _ -> respond $ Wai.responseLBS Status.ok200 [] ""
+      in runSessionWithProvider app $ \_ _ -> do
+          createSession
+          response <- get "/some/endpoint"
+          assertStatus 200 response
+
+  , testCase "when a request with a valid session is made then the app can access the id token" $
+      let app req respond = 
+            case getIdToken req of
+              Nothing -> respond $ Wai.responseLBS Status.badRequest400 [] ""
+              Just _ -> respond $ Wai.responseLBS Status.ok200 [] ""
+      in runSessionWithProvider app $ \_ _ -> do
+          createSession
+          response <- get "/some/endpoint"
+          assertStatus 200 response
+
   , testCase "when an ID token has an invalid audience then redirect to re-authorize" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { jwtAudience = fromString "wrong-audience" })
         createSession
         response <- get "/some/endpoint"
         assertStatus 303 response
 
   , testCase "when an ID token has an invalid issuer then redirect to re-authorize" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { jwtIssuer = "wrong-issuer" })
         createSession
         response <- get "/some/endpoint"
         assertStatus 303 response
 
   , testCase "when a session does not contain an ID token then redirect to re-authorize" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { returnIdToken = False })
         createSession
         response <- get "/some/endpoint"
         assertStatus 303 response
 
   , testCase "when an ID token has an invalid signature then redirect to re-authorize" $
-      runSessionWithProvider $ \_ changeProvider -> do
+      runSessionWithProvider const200 $ \_ changeProvider -> do
         newJWK <- liftIO $ JOSE.genJWK (JOSE.RSAGenParam 256)
         changeProvider (\c -> c { jwtJWK = newJWK })
         createSession
@@ -111,14 +139,14 @@ tests = testGroup "Network.Wai.Auth.OpenIDConnect"
 createSession :: Session ()
 createSession = void $ get "/prefix/oidc/complete?code=1234"
 
-runSessionWithProvider :: (U.URI -> ChangeProvider -> Session a) -> IO a
-runSessionWithProvider session = do
+runSessionWithProvider :: Wai.Application -> (U.URI -> ChangeProvider -> Session a) -> IO a
+runSessionWithProvider app session = do
   (provider, changeProvider) <- fakeProvider
   Warp.testWithApplication (pure provider) $ \port -> do
     let host = parseURI $ "http://localhost:" <> T.pack (show port)
     middleware <- Auth.mkAuthMiddleware =<< authSettings host
-    let app = middleware const200
-    runSession (session host changeProvider) app
+    let app' = middleware app
+    runSession (session host changeProvider) app'
 
 authSettings :: U.URI -> IO Auth.AuthSettings
 authSettings host = do

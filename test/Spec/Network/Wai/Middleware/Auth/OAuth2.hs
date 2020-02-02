@@ -29,7 +29,7 @@ import qualified Web.Cookie                             as Cookie
 
 tests :: TestTree
 tests = testGroup "Network.Wai.Auth.OAuth2"
-  [ testCase "when a request without a session is made then the response redirects to the oauth2 authorize endpoint" $
+  [ testCase "when a request without a session is made then redirect to re-authorize" $
       runSessionWithProvider const200 $ \host _ -> do
         redirect1 <- get "/hi"
         assertStatus 303 redirect1
@@ -44,20 +44,27 @@ tests = testGroup "Network.Wai.Auth.OAuth2"
           (TE.encodeUtf8 host <> "/authorize?scope=scope1%2Cscope2&client_id=client-id&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2Fprefix%2Foauth2%2Fcomplete")
           redirect3
 
-  , testCase "when a request with an expired session is made then the response redirects to the oauth2 authorize endpoint" $
+  , testCase "when a request is made with a valid session then pass the request through" $
+      runSessionWithProvider const200 $ \_ _ -> do
+        createSession
+        response <- get "/some/endpoint"
+        assertStatus 200 response
+
+  , testCase "when an access token expired and no refresh token is available then redirect to re-authorize" $
       runSessionWithProvider const200 $ \_ changeProvider -> do
         changeProvider (\c -> c { accessTokenExpiresIn = -600, returnRefreshToken = False })
         createSession
         response <- get "/some/endpoint"
         assertStatus 303 response
 
-  , testCase "when a request with a valid session is made then the middleware passes the request through" $
-      runSessionWithProvider const200 $ \_ _ -> do
+  , testCase "when an access token expired then use a refresh token" $
+      runSessionWithProvider const200 $ \_ changeProvider -> do
+        changeProvider (\c -> c { accessTokenExpiresIn = -600 })
         createSession
         response <- get "/some/endpoint"
         assertStatus 200 response
 
-  , testCase "when a request with an invalid session is made then the response redirects to the oauth2 authorize endpoint" $
+  , testCase "when a request is made with an invalid session redirect to re-authorize" $
       runSessionWithProvider const200 $ \_ _ -> do
         -- First create a known valid session, so we can see that it's the act
         -- of corrupting it that makes the test fail.
@@ -70,20 +77,20 @@ tests = testGroup "Network.Wai.Auth.OAuth2"
         response <- get "/some/endpoint"
         assertStatus 303 response
 
-  , testCase "when a request is made to the oauth2 complete endpoint then the middleware fatches an access token and sets a user sesion" $
+  , testCase "when a request is made to the complete endpoint then create a session" $
       runSessionWithProvider const200 $ \_ _ -> do
         response <- get "/prefix/oauth2/complete?code=1234"
         assertStatus 303 response
         assertHeader "location" "/" response
 
-  , testCase "when a request with a valid session is made then the application can access the session payload" $
+  , testCase "when a request with a valid session is made then the app can access the session" $
       let app req respond = 
             case getAccessToken req of
               Nothing -> respond $ Wai.responseLBS Status.badRequest400 [] ""
               Just _ -> respond $ Wai.responseLBS Status.ok200 [] ""
       in runSessionWithProvider app $ \_ _ -> do
           createSession
-          response <- get "/prefix/oauth2/complete?code=1234"
+          response <- get "/some/endpoint"
           assertStatus 200 response
   ]
 
