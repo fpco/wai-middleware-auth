@@ -7,7 +7,6 @@ module Network.Wai.Auth.Test
   , fakeProvider
   , const200
   , get
-  , parseURI
   ) where
 
 import           Control.Monad.IO.Class                 (liftIO)

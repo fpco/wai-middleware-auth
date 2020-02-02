@@ -8,14 +8,14 @@ import           Control.Monad.IO.Class                 (liftIO)
 import qualified Crypto.JOSE                            as JOSE
 import           Data.Function                          ((&))
 import qualified Data.Text                              as T
+import qualified Data.Text.Encoding                     as TE
 import           GHC.Exts                               (fromList, fromString)
 import qualified Network.HTTP.Types.Status              as Status
 import qualified Network.Wai                            as Wai
 import           Network.Wai.Auth.Test                  (ChangeProvider,
                                                          FakeProviderConf(..),
                                                          fakeProvider,
-                                                         const200, get,
-                                                         parseURI)
+                                                         const200, get)
 import qualified Network.Wai.Handler.Warp               as Warp
 import qualified Network.Wai.Middleware.Auth            as Auth
 import           Network.Wai.Middleware.Auth.OIDC 
@@ -26,7 +26,6 @@ import           Network.Wai.Test                       (Session, assertHeader,
                                                          setClientCookie)
 import           Test.Tasty                             (TestTree, testGroup)
 import           Test.Tasty.HUnit                       (testCase)
-import qualified URI.ByteString                         as U
 import qualified Web.Cookie                             as Cookie
 
 tests :: TestTree
@@ -43,7 +42,7 @@ tests = testGroup "Network.Wai.Auth.OIDC"
         assertStatus 303 redirect3
         assertHeader
           "location"
-          (U.serializeURIRef' host <> "/authorize?scope=openid%2Cscope1&client_id=client-id&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2Fprefix%2Foidc%2Fcomplete")
+          (TE.encodeUtf8 host <> "/authorize?scope=openid%2Cscope1&client_id=client-id&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2Fprefix%2Foidc%2Fcomplete")
           redirect3
 
   , testCase "when a request is made with a valid session then pass the request through" $
@@ -139,16 +138,16 @@ tests = testGroup "Network.Wai.Auth.OIDC"
 createSession :: Session ()
 createSession = void $ get "/prefix/oidc/complete?code=1234"
 
-runSessionWithProvider :: Wai.Application -> (U.URI -> ChangeProvider -> Session a) -> IO a
+runSessionWithProvider :: Wai.Application -> (T.Text -> ChangeProvider -> Session a) -> IO a
 runSessionWithProvider app session = do
   (provider, changeProvider) <- fakeProvider
   Warp.testWithApplication (pure provider) $ \port -> do
-    let host = parseURI $ "http://localhost:" <> T.pack (show port)
+    let host = "http://localhost:" <> T.pack (show port)
     middleware <- Auth.mkAuthMiddleware =<< authSettings host
     let app' = middleware app
     runSession (session host changeProvider) app'
 
-authSettings :: U.URI -> IO Auth.AuthSettings
+authSettings :: T.Text -> IO Auth.AuthSettings
 authSettings host = do
   oidc' <- discover host
   let oidc =

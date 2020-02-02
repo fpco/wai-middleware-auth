@@ -142,8 +142,9 @@ instance AuthProvider OpenIDConnect where
 -- | Fetch configuration for a provider from its discovery endpoint.
 --
 -- @since 0.2.3.0
-discover :: U.URI -> IO OpenIDConnect
-discover base = do
+discover :: T.Text -> IO OpenIDConnect
+discover urlText = do
+  base <- parseAbsoluteURI urlText
   let uri = base { U.uriPath = "/.well-known/openid-configuration" }
   metadata <- fetchMetadata uri
   jwkset <- fetchJWKSet (jwksUri metadata)
