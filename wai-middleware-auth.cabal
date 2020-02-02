@@ -82,7 +82,8 @@ test-suite spec
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   hs-source-dirs:      test
-  other-modules:       Spec.Network.Wai.Auth.Internal
+  other-modules:       Network.Wai.Auth.Test
+                     , Spec.Network.Wai.Auth.Internal
                      , Spec.Network.Wai.Middleware.Auth.OAuth2
                      , Spec.Network.Wai.Middleware.Auth.OpenIDConnect
   build-depends:       base
