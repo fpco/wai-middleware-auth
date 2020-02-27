@@ -150,6 +150,15 @@ data Metadata
       }
   deriving (Generic)
 
-instance Aeson.FromJSON Metadata
+instance Aeson.FromJSON Metadata where
+  parseJSON = Aeson.genericParseJSON metadataAesonOptions
 
-instance Aeson.ToJSON Metadata
+instance Aeson.ToJSON Metadata where
+
+  toJSON = Aeson.genericToJSON metadataAesonOptions
+
+  toEncoding = Aeson.genericToEncoding metadataAesonOptions
+
+metadataAesonOptions :: Aeson.Options
+metadataAesonOptions =
+  Aeson.defaultOptions {Aeson.fieldLabelModifier = Aeson.camelTo2 '_'}
