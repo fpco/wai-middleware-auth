@@ -14,7 +14,7 @@ $ cabal install wai-middleware-auth
 
 ## wai-auth
 
-Along with middleware this package ships with an executbale `wai-auth`, which
+Along with middleware this package ships with an executable `wai-auth`, which
 can function as a protected file server or a reverse proxy. Right from the box
 it supports OAuth2 authentication as well as it's custom implementations for
 Google and Github.
