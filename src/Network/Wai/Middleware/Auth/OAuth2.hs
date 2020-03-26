@@ -16,7 +16,6 @@ import           Data.Aeson.TH                        (defaultOptions,
                                                        fieldLabelModifier)
 import qualified Data.ByteString                      as S
 import qualified Data.ByteString.Char8                as S8 (pack)
-import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8,

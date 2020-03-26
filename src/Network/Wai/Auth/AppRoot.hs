@@ -6,7 +6,6 @@ module Network.Wai.Auth.AppRoot
 import           Data.ByteString          (ByteString)
 import           Data.CaseInsensitive     (CI, mk)
 import qualified Data.HashMap.Lazy        as HM
-import           Data.Monoid              ((<>))
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8With)
 import           Data.Text.Encoding.Error (lenientDecode)

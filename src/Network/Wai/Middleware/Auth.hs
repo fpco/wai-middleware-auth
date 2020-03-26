@@ -29,7 +29,6 @@ import           Data.Binary                          (Binary)
 import qualified Data.ByteString                      as S
 import           Data.ByteString.Builder              (Builder)
 import qualified Data.HashMap.Strict                  as HM
-import           Data.Monoid                          ((<>))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (decodeUtf8With,
                                                        encodeUtf8)

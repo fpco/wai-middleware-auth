@@ -9,7 +9,6 @@ import           Control.Exception.Safe               (catchAny)
 import           Data.Maybe                           (fromMaybe)
 import           Data.Aeson
 import qualified Data.ByteString                      as S
-import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8)
