@@ -22,6 +22,7 @@ module Network.Wai.Middleware.Auth
     , waiMiddlewareAuthVersion
     , getAuthUser
     , getDeleteSessionHeader
+    , decodeKey
     ) where
 
 import           Blaze.ByteString.Builder             (fromByteString)
@@ -48,6 +49,7 @@ import           Network.Wai                          (Middleware, Request,
 import           Network.Wai.Auth.AppRoot
 import           Network.Wai.Auth.ClientSession
 import           Network.Wai.Middleware.Auth.Provider
+import           Network.Wai.Auth.Tools               (decodeKey)
 import qualified Paths_wai_middleware_auth            as Paths
 import           System.IO.Unsafe                     (unsafePerformIO)
 import           System.PosixCompat.Time              (epochTime)
