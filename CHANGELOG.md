@@ -1,3 +1,9 @@
+# 0.2.3.0
+========
+
+* Support `hoauth2-1.11.0`
+* Expose `decodeKey`
+
 # 0.2.2.0
 ========
 

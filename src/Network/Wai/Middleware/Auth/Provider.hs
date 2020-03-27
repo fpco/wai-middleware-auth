@@ -40,7 +40,6 @@ import qualified Data.ByteString.Builder       as B
 import qualified Data.HashMap.Strict           as HM
 import           Data.Int
 import           Data.Maybe                    (fromMaybe)
-import           Data.Monoid                   ((<>))
 import           Data.Proxy                    (Proxy)
 import qualified Data.Text                     as T
 import           Data.Text.Encoding            (decodeUtf8With)

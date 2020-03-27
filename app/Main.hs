@@ -3,7 +3,6 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Main where
 import qualified Data.ByteString                           as S
-import           Data.Monoid                               ((<>))
 import           Data.Serialize                            (put, runPut)
 import           Network.Wai.Auth.Executable
 import           Network.Wai.Handler.Warp                  (run)

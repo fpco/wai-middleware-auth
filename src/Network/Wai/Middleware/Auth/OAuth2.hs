@@ -16,7 +16,6 @@ import           Data.Aeson.TH                        (defaultOptions,
                                                        fieldLabelModifier)
 import qualified Data.ByteString                      as S
 import qualified Data.ByteString.Char8                as S8 (pack)
-import           Data.Monoid                          ((<>))
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
 import           Data.Text.Encoding                   (encodeUtf8,
@@ -99,7 +98,7 @@ instance AuthProvider OAuth2 where
     let oauth2 =
           OA2.OAuth2
           { oauthClientId = getClientId oa2ClientId
-          , oauthClientSecret = getClientSecret oa2ClientSecret
+          , oauthClientSecret = Just $ getClientSecret oa2ClientSecret
           , oauthOAuthorizeEndpoint = authEndpointURI
           , oauthAccessTokenEndpoint = accessTokenEndpointURI
           , oauthCallback = Just callbackURI

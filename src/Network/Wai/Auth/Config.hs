@@ -12,8 +12,7 @@ module Network.Wai.Auth.Config
   ) where
 
 import           Data.Aeson
-import           Data.Aeson.TH          (defaultOptions, deriveJSON,
-                                         fieldLabelModifier)
+import           Data.Aeson.TH          (deriveJSON)
 import qualified Data.Text              as T
 import           Data.Text.Encoding     (encodeUtf8)
 import           Network.Wai.Auth.Tools (decodeKey, encodeKey,

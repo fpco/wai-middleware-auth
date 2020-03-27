@@ -1,5 +1,7 @@
 # wai-middleware-auth
 
+[![Build Status](https://dev.azure.com/fpco/wai-middleware-auth/_apis/build/status/fpco.wai-middleware-auth?branchName=master)](https://dev.azure.com/fpco/wai-middleware-auth/_build/latest?definitionId=4&branchName=master)
+
 Middleware that secures WAI application
 
 ## Installation
