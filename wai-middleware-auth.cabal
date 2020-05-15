@@ -90,6 +90,7 @@ test-suite spec
                      , aeson
                      , binary
                      , bytestring
+                     , clientsession
                      , cookie
                      , hedgehog
                      , hoauth2

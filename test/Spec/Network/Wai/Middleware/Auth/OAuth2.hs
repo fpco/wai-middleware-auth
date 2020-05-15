@@ -26,6 +26,7 @@ import           Network.Wai.Test                       (Session, assertHeader,
 import           Test.Tasty                             (TestTree, testGroup)
 import           Test.Tasty.HUnit                       (testCase)
 import qualified Web.Cookie                             as Cookie
+import qualified Web.ClientSession
 
 tests :: TestTree
 tests = testGroup "Network.Wai.Auth.OAuth2"
@@ -103,6 +104,7 @@ authSettings host =
     & Auth.setAuthProviders (fromList [("oauth2", provider host)])
     & Auth.setAuthPrefix "prefix"
     & Auth.setAuthCookieName "auth-cookie"
+    & Auth.setAuthKey (snd <$> Web.ClientSession.randomKey)
 
 provider :: T.Text -> Provider
 provider host =
