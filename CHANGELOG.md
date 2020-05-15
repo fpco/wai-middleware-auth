@@ -2,6 +2,7 @@
 =======
 
 * Support `hoauth2-1.11.0`
+* Drop support for `jose` versions < 0.8
 * Expose `decodeKey`
 * OAuth2 provider remove a session when an access token expires. It will use a
   refresh token if one is available to create a new session. If no refresh token
