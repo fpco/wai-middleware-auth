@@ -43,7 +43,7 @@ library
                      , http-conduit
                      , http-reverse-proxy
                      , http-types
-                     , jose
+                     , jose                 >= 0.8.0
                      , microlens
                      , mtl
                      , regex-posix

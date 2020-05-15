@@ -242,23 +242,8 @@ validateIssuer oidc issClaim =
 
 fromStringOrURI :: JWT.StringOrURI -> Maybe T.Text
 fromStringOrURI stringOrURI =
-   fmap toText (Lens.Extras.preview JWT.string stringOrURI)
+  Lens.Extras.preview JWT.string stringOrURI
    <|> fmap (T.pack . show) (Lens.Extras.preview JWT.uri stringOrURI)
-
--- A small helper class for compatibility with different versions of the `jose`
--- library. Pre-0.8.x `JWT.string` produces a `String`. Post-0.8.x it produces a
--- `Text`. This type class allows us to support both.
---
--- We can drop this once we no longer wish to support `jose` versions 0.7.x and
--- before.
-class ToText a where
-  toText :: a -> T.Text
-
-instance ToText T.Text where
-  toText = id
-
-instance ToText [Char] where
-  toText = T.pack
 
 storeClaims :: JWT.ClaimsSet -> Request -> Request
 storeClaims claims req =
