@@ -100,27 +100,27 @@ instance AuthProvider OAuth2 where
   refreshLoginState OAuth2 {..} req user = do
     authEndpointURI <- parseAbsoluteURI oa2AuthorizeEndpoint
     accessTokenEndpointURI <- parseAbsoluteURI oa2AccessTokenEndpoint
-    let oauth2 =
-          OA2.OAuth2
-          { oauthClientId = getClientId oa2ClientId
-          , oauthClientSecret = getClientSecret oa2ClientSecret
-          , oauthOAuthorizeEndpoint = authEndpointURI
-          , oauthAccessTokenEndpoint = accessTokenEndpointURI
-          -- Setting callback endpoint to `Nothing` below is a lie.
-          -- We do have a callback endpoint but in this context
-          -- don't have access to the function that can render it.
-          -- We get away with this because the callback endpoint is
-          -- not needed for obtaining a refresh token, the only
-          -- way we use the config here constructed.
-          , oauthCallback = Nothing
-          }
-    man <- getGlobalManager
     let loginState = authLoginState user
     case decodeToken loginState of
       Left _ -> pure Nothing
       Right tokens -> do
         CTime now <- epochTime
         if tokenExpired user now tokens then do
+          let oauth2 =
+                OA2.OAuth2
+                { oauthClientId = getClientId oa2ClientId
+                , oauthClientSecret = getClientSecret oa2ClientSecret
+                , oauthOAuthorizeEndpoint = authEndpointURI
+                , oauthAccessTokenEndpoint = accessTokenEndpointURI
+                -- Setting callback endpoint to `Nothing` below is a lie.
+                -- We do have a callback endpoint but in this context
+                -- don't have access to the function that can render it.
+                -- We get away with this because the callback endpoint is
+                -- not needed for obtaining a refresh token, the only
+                -- way we use the config here constructed.
+                , oauthCallback = Nothing
+                }
+          man <- getGlobalManager
           rRes <- refreshTokens tokens man oauth2
           case rRes of
             Nothing -> pure Nothing
