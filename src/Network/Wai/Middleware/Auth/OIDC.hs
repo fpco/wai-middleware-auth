@@ -27,6 +27,8 @@ import           Control.Applicative                  ((<|>))
 import qualified Crypto.JOSE                          as JOSE
 import qualified Crypto.JWT                           as JWT
 import           Control.Monad.Except                 (runExceptT)
+import           Data.Aeson                           (FromJSON(parseJSON),
+                                                       withObject, (.:), (.!=))
 import qualified Data.ByteString.Char8                as S8
 import           Data.Function                        ((&))
 import qualified Data.Time.Clock                      as Clock
@@ -84,10 +86,10 @@ data OpenIDConnect
       --
       -- @since 0.2.3.0
       , oidcProviderInfo :: ProviderInfo
-      -- | The HTTP manager to use. Defaults to the global manager.
+      -- | The HTTP manager to use. Defaults to the global manager when not set.
       --
       -- @since 0.2.3.0
-      , oidcManager :: Manager
+      , oidcManager :: Maybe Manager
       -- | The scopes to set. Defaults to only the "openid" scope.
       --
       -- @since 0.2.3.0
@@ -99,14 +101,36 @@ data OpenIDConnect
       , oidcAllowedSkew :: Clock.NominalDiffTime
       }
 
+instance FromJSON OpenIDConnect where
+  parseJSON =
+    withObject "OpenIDConnect Object" $ \obj -> do
+      metadata <- obj .: "metadata"
+      jwkSet <- obj .: "jwk_set"
+      clientId <- obj .: "client_id"
+      clientSecret <- obj .: "client_secret"
+      providerInfo <- obj .: "provider_info" .!= defProviderInfo
+      scopes <- obj .: "scopes" .!= ["openid"]
+      allowedSkew <- obj .: "allowed_skew" .!= 0
+      pure OpenIDConnect {
+        oidcMetadata = metadata,
+        oidcJwkSet = jwkSet,
+        oidcClientId = clientId,
+        oidcClientSecret = clientSecret,
+        oidcProviderInfo = providerInfo,
+        oidcManager = Nothing,
+        oidcScopes = scopes,
+        oidcAllowedSkew = allowedSkew
+      }
+
 instance AuthProvider OpenIDConnect where
   getProviderName _ = "oidc"
   getProviderInfo = oidcProviderInfo
   handleLogin oidc@OpenIDConnect {.. } req suffix renderUrl onSuccess onFailure = do
     oauth2 <- mkOauth2 oidc (Just renderUrl)
+    manager <- maybe getGlobalManager pure oidcManager
     oauth2Login
       oauth2
-      oidcManager
+      manager
       (Just oidcScopes)
       (getProviderName oidc)
       req
@@ -122,7 +146,8 @@ instance AuthProvider OpenIDConnect where
         case vRes of
           Nothing -> do
             oauth2 <- mkOauth2 oidc Nothing
-            rRes <- refreshTokens tokens (oidcManager oidc) oauth2
+            manager <- maybe getGlobalManager pure (oidcManager oidc)
+            rRes <- refreshTokens tokens manager oauth2
             case rRes of
               Nothing -> pure Nothing
               Just newTokens -> do
@@ -149,17 +174,19 @@ discover urlText = do
   let uri = base { U.uriPath = "/.well-known/openid-configuration" }
   metadata <- fetchMetadata uri
   jwkset <- fetchJWKSet (jwksUri metadata)
-  manager <- getGlobalManager
   pure OpenIDConnect 
     { oidcClientId = ""
     , oidcClientSecret = ""
     , oidcMetadata = metadata
     , oidcJwkSet = jwkset
-    , oidcProviderInfo = ProviderInfo "OpenID Connect Provider" "" ""
-    , oidcManager = manager
+    , oidcProviderInfo = defProviderInfo
+    , oidcManager = Nothing
     , oidcScopes = ["openid"]
     , oidcAllowedSkew = 0
     }
+
+defProviderInfo :: ProviderInfo
+defProviderInfo = ProviderInfo "OpenID Connect Provider" "" ""
 
 fetchMetadata :: U.URI -> IO Metadata
 fetchMetadata metadataEndpoint = do
