@@ -110,7 +110,7 @@ instance AuthProvider OAuth2 where
           let oauth2 =
                 OA2.OAuth2
                 { oauthClientId = getClientId oa2ClientId
-                , oauthClientSecret = getClientSecret oa2ClientSecret
+                , oauthClientSecret = Just (getClientSecret oa2ClientSecret)
                 , oauthOAuthorizeEndpoint = authEndpointURI
                 , oauthAccessTokenEndpoint = accessTokenEndpointURI
                 -- Setting callback endpoint to `Nothing` below is a lie.

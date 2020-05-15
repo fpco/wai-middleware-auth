@@ -203,7 +203,7 @@ mkOauth2 OpenIDConnect {..} renderUrl = do
   callbackURI <- for renderUrl $ \render -> parseAbsoluteURI $ render (ProviderUrl ["complete"]) []
   pure OA2.OAuth2
         { oauthClientId = oidcClientId
-        , oauthClientSecret = oidcClientSecret
+        , oauthClientSecret = Just oidcClientSecret
         , oauthOAuthorizeEndpoint = authorizationEndpoint oidcMetadata
         , oauthAccessTokenEndpoint = tokenEndpoint oidcMetadata
         , oauthCallback = callbackURI
