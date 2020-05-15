@@ -14,6 +14,7 @@ import           Control.Monad.Catch
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
+import           Data.Functor                         ((<&>))
 import           Data.Int                             (Int64)
 import           Data.Proxy                           (Proxy (..))
 import qualified Data.Text                            as T
@@ -122,15 +123,10 @@ instance AuthProvider OAuth2 where
                 }
           man <- getGlobalManager
           rRes <- refreshTokens tokens man oauth2
-          case rRes of
-            Nothing -> pure Nothing
-            Just newTokens -> 
-              let user' =
-                    user {
-                      authLoginState = encodeToken newTokens,
-                      authLoginTime = fromIntegral now
-                    }
-              in pure (Just (req, user'))
+          pure (rRes <&> \newTokens -> (req, user {
+                 authLoginState = encodeToken newTokens,
+                 authLoginTime = fromIntegral now
+               }))
         else
           pure (Just (req, user))
 
