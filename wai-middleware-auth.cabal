@@ -16,6 +16,7 @@ library
                        Network.Wai.Middleware.Auth.OAuth2
                        Network.Wai.Middleware.Auth.OAuth2.Github
                        Network.Wai.Middleware.Auth.OAuth2.Google
+                       Network.Wai.Middleware.Auth.OIDC
                        Network.Wai.Middleware.Auth.Provider
                        Network.Wai.Auth.Executable
                        Network.Wai.Auth.Internal
@@ -42,6 +43,9 @@ library
                      , http-conduit
                      , http-reverse-proxy
                      , http-types
+                     , jose                 >= 0.8.0
+                     , microlens
+                     , mtl
                      , regex-posix
                      , safe-exceptions
                      , shakespeare
@@ -78,13 +82,32 @@ test-suite spec
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   hs-source-dirs:      test
+  other-modules:       Network.Wai.Auth.Test
+                     , Spec.Network.Wai.Auth.Internal
+                     , Spec.Network.Wai.Middleware.Auth.OAuth2
+                     , Spec.Network.Wai.Middleware.Auth.OIDC
   build-depends:       base
+                     , aeson
                      , binary
                      , bytestring
+                     , clientsession
+                     , cookie
                      , hedgehog
                      , hoauth2
+                     , http-types
+                     , jose
+                     , microlens
+                     , mtl
+                     , tasty
+                     , tasty-hedgehog
+                     , tasty-hunit
                      , text
+                     , time
+                     , uri-bytestring
+                     , wai
+                     , wai-extra
                      , wai-middleware-auth
+                     , warp
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
 
 source-repository head

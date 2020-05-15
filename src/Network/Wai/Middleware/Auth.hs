@@ -41,7 +41,8 @@ import           GHC.Generics                         (Generic)
 import           Network.HTTP.Types                   (Header, status200,
                                                        status303, status404,
                                                        status501)
-import           Network.Wai                          (Middleware, Request,
+import           Network.Wai                          (mapResponseHeaders,
+                                                       Middleware, Request,
                                                        pathInfo, rawPathInfo,
                                                        rawQueryString,
                                                        responseBuilder,
@@ -273,8 +274,29 @@ mkAuthMiddleware AuthSettings {..} = do
     authState <- loadCookieValue secretKey asStateKey req
     case authState of
       Just (AuthLoggedIn user) ->
-        let req' = req {vault = Vault.insert userKey user $ vault req}
-        in app req' respond
+        let providerName = decodeUtf8With lenientDecode (authProviderName user)
+        in case HM.lookup providerName asProviders of        
+          Nothing ->
+            -- We can no longer find the provider the user originally
+            -- authenticated with, and as a result have no way to check if the
+            -- session is still valid. For backwards compatibility with older
+            -- versions of this library we'll assume the session remains valid.
+            let req' = req {vault = Vault.insert userKey user $ vault req}
+            in app req' respond
+          Just provider -> do
+            refreshResult <- refreshLoginState provider req user
+            case refreshResult of
+              Nothing ->
+                -- The session has expired, the user needs to re-authenticate.
+                enforceLogin "/" req respond
+              Just (req', user') ->
+                let req'' = req' {vault = Vault.insert userKey user' $ vault req'}
+                    respond' response 
+                      | user' == user = respond response
+                      | otherwise = do
+                          cookieHeader <- saveAuthState (AuthLoggedIn user')
+                          respond $ mapResponseHeaders (cookieHeader :) response 
+                in app req'' respond'
       Just (AuthNeedRedirect url) -> enforceLogin url req respond
       Nothing -> enforceLogin "/" req respond
 
