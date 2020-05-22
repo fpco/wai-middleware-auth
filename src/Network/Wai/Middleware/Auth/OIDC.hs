@@ -11,6 +11,7 @@ module Network.Wai.Middleware.Auth.OIDC
   ( -- * Creating a provider
     OpenIDConnect
   , discover
+  , discoverURI
   -- * Customizing a provider
   , oidcClientId
   , oidcClientSecret
@@ -165,13 +166,21 @@ instance AuthProvider OpenIDConnect where
           Just claims -> 
             pure (Just (storeClaims claims req, user))
 
--- | Fetch configuration for a provider from its discovery endpoint.
+-- | Fetch configuration for a provider from its discovery
+-- endpoint. Sets the path to @/.well-known/..@.
 --
 -- @since 0.2.3.0
 discover :: T.Text -> IO OpenIDConnect
 discover urlText = do
   base <- parseAbsoluteURI urlText
   let uri = base { U.uriPath = "/.well-known/openid-configuration" }
+  discoverURI uri
+
+-- | Fetch configuration for a provider from an exact URI.
+--
+-- @since 0.2.3.1
+discoverURI :: U.URI -> IO OpenIDConnect
+discoverURI uri = do
   metadata <- fetchMetadata uri
   jwkset <- fetchJWKSet (jwksUri metadata)
   pure OpenIDConnect 
