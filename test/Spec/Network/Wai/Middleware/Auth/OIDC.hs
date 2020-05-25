@@ -43,7 +43,7 @@ tests = testGroup "Network.Wai.Auth.OIDC"
         assertStatus 303 redirect3
         assertHeader
           "location"
-          (TE.encodeUtf8 host <> "/authorize?scope=openid%2Cscope1&client_id=client-id&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2Fprefix%2Foidc%2Fcomplete")
+          (TE.encodeUtf8 host <> "/authorize?scope=openid%20scope1&client_id=client-id&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%2Fprefix%2Foidc%2Fcomplete")
           redirect3
 
   , testCase "when a request is made with a valid session then pass the request through" $
