@@ -76,7 +76,8 @@ oauth2Login
 oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure = 
   case suffix of
     [] -> do
-      let scope = (encodeUtf8 . T.intercalate ",") <$> oa2Scope
+      -- https://tools.ietf.org/html/rfc6749#section-3.3
+      let scope = (encodeUtf8 . T.intercalate " ") <$> oa2Scope
       let redirectUrl =
             getRedirectURI $
             appendQueryParams
