@@ -1,3 +1,8 @@
+0.2.3.1
+=======
+
+* Expose `discoverURI` in `Network.Wai.Middleware.Auth.OIDC`
+
 0.2.3.0
 =======
 
