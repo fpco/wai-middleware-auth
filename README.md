@@ -22,8 +22,8 @@ it supports OAuth2 authentication as well as it's custom implementations for
 Google and Github.
 
 Configuration is done using a yaml config file. Here is a sample file that will
-configure `wai-auth` to run a file server with google and github authentication
-on `http://localhost:3000`:
+configure `wai-auth` to run a file server with Google, GitHub, and GitLab
+authentication on `http://localhost:3000`:
 
 ```yaml
 app_root: "_env:APPROOT:http://localhost:3000"
@@ -46,6 +46,12 @@ providers:
     client_secret: "...oxW"
     email_white_list:
       - "^[a-zA-Z0-9._%+-]+@example.com$"
+  gitlab:
+    client_id: "...9cfc"
+    client_secret: "...f0d0"
+    app_name: "Dev App for wai-middleware-auth"
+    email_white_list:
+      - "^[a-zA-Z0-9._%+-]+@example.com$"
 ```
 
 Above configuration will also block access to users that don't have an email
@@ -57,8 +63,9 @@ $ echo $(wai-auth key --base64)
 azuCFq0zEBkLSXhQrhliZzZD8Kblo...
 ```
 
-Make sure you have proper callback/redirect urls registered with google/github
-apps, eg: `http://localhost:3000/_auth_middleware/google/complete`.
+Make sure you have proper callback/redirect urls registered with
+google/github/gitlab apps, eg:
+`http://localhost:3000/_auth_middleware/google/complete`.
 
 After configuration file is ready, running application is very easy:
 
@@ -67,3 +74,34 @@ $ wai-auth --config-file=/path/to/config.yaml
 Listening on port 3000
 ```
 
+### Reverse proxy
+
+To use a reverse proxy instead of a file server, replace `file_server` with
+`reverse_proxy`, eg:
+
+```yaml
+reverse_proxy:
+  host: myapp.example.com
+  port: 80
+```
+
+### Self-hosted GitLab
+
+The GitLab provider also supports using a self-hosted GitLab instance by
+setting the `gitlab_host` field.  In this case you may also want to override
+the `provider_info` to change the title, logo, and description.  For example:
+
+```yaml
+providers:
+  gitlab:
+    gitlab_host: gitlab.mycompany.com
+    client_id: "...9cfc"
+    client_secret: "...f0d0"
+    app_name: "Dev App for wai-middleware-auth"
+    email_white_list:
+      - "^[a-zA-Z0-9._%+-]+@mycompany.com$"
+    provider_info:
+      title: My Company's GitLab
+      logo_url: https://mycompany.com/logo.png
+      descr: Use your My Company GitLab account to access this page.
+```
