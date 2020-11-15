@@ -8,6 +8,7 @@ import           Network.Wai.Auth.Executable
 import           Network.Wai.Handler.Warp                  (run)
 import           Network.Wai.Middleware.Auth
 import           Network.Wai.Middleware.Auth.OAuth2
+import           Network.Wai.Middleware.Auth.OAuth2.Gitlab
 import           Network.Wai.Middleware.Auth.OAuth2.Github
 import           Network.Wai.Middleware.Auth.OAuth2.Google
 import           Network.Wai.Middleware.RequestLogger      (logStdout)
@@ -76,7 +77,7 @@ main = do
   case opts of
     ConfigFile configFile -> do
       authConfig <- readAuthConfig configFile
-      mkMain authConfig [githubParser, googleParser, oAuth2Parser] $ \port app -> do
+      mkMain authConfig [gitlabParser, githubParser, googleParser, oAuth2Parser] $ \port app -> do
         putStrLn $ "Listening on port " ++ show port
         run port $ logStdout app
     KeyFile (KeyOptions {..}) -> do

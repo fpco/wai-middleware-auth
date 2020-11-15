@@ -1,3 +1,7 @@
+# 0.2.4.0
+
+- Add GitLab provider.
+
 # 0.2.3.1
 
 - Expose `discoverURI` in `Network.Wai.Middleware.Auth.OIDC`
