@@ -64,7 +64,7 @@ azuCFq0zEBkLSXhQrhliZzZD8Kblo...
 ```
 
 Make sure you have proper callback/redirect urls registered with
-google/github/github apps, eg:
+google/github/gitlab apps, eg:
 `http://localhost:3000/_auth_middleware/google/complete`.
 
 After configuration file is ready, running application is very easy:
