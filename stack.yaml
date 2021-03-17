@@ -1,3 +1,2 @@
-resolver: lts-15.5
-extra-deps:
-- hoauth2-1.11.0@rev:0 # For older resolvers on CI
+resolver: lts-17.6
+extra-deps: []

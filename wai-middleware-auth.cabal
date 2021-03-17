@@ -1,6 +1,6 @@
 cabal-version:       1.18
 name:                wai-middleware-auth
-version:             0.2.4.0
+version:             0.2.4.1
 synopsis:            Authentication middleware that secures WAI application
 description:         Please see the README and Haddocks at <https://www.stackage.org/package/wai-middleware-auth>
 license:             MIT
@@ -73,6 +73,7 @@ executable wai-auth
                      , cereal
                      , clientsession
                      , optparse-simple
+                     , optparse-applicative
                      , wai-extra
                      , wai-middleware-auth
                      , warp

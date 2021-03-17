@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -19,6 +20,14 @@ data BasicOptions
   = ConfigFile FilePath
   | KeyFile KeyOptions
 
+showHelpText :: ParseError
+showHelpText = ShowHelpText
+#if MIN_VERSION_optparse_applicative(0,16,0)
+                Nothing
+#endif
+
+
+
 basicSettingsParser :: String -> Parser BasicOptions
 basicSettingsParser version =
   (ConfigFile <$>
@@ -29,7 +38,7 @@ basicSettingsParser version =
      (InfoMsg version)
      (long "version" <> short 'v' <> help "Current version.") <*
    abortOption
-     ShowHelpText
+     showHelpText
      (long "help" <> short 'h' <> help "Display this message.")) <|>
   (subparser
      (command
@@ -61,7 +70,7 @@ keyOptionsParser =
     (long "base64" <> short 'b' <>
      help "Produce a key in a base64 encoded form.") <*
   abortOption
-    ShowHelpText
+    showHelpText
     (long "help" <> short 'h' <> help "Display this message.")
 
 
