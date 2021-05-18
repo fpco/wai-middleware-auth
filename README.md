@@ -1,6 +1,6 @@
 # wai-middleware-auth
 
-[![Build Status](https://dev.azure.com/fpco/wai-middleware-auth/_apis/build/status/fpco.wai-middleware-auth?branchName=master)](https://dev.azure.com/fpco/wai-middleware-auth/_build/latest?definitionId=4&branchName=master)
+[![Build Status](https://github.com/fpco/wai-middleware-auth/actions/workflows/tests.yml/badge.svg)](https://github.com/fpco/wai-middleware-auth/actions/workflows/tests.yml)
 
 Middleware that secures WAI application
 
