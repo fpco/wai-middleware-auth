@@ -1,2 +1,1 @@
-resolver: lts-17.6
-extra-deps: []
+resolver: lts-17.12
