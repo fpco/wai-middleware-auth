@@ -13,18 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         args:
         - "--resolver nightly"
         - "--resolver lts-17"
         - "--resolver lts-16"
         - "--resolver lts-14 --stack-yaml stack-lts-14.yaml"
-        # Bugs in GHC make it crash too often to be worth running
-        exclude:
-          - os: windows-latest
-            args: "--resolver nightly"
-          - os: windows-latest
-            args: "--resolver lts-16"
 
     steps:
       - name: Clone project
