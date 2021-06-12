@@ -1,3 +1,7 @@
+# 0.2.5.0
+
+- Add `getAuthUserFromVault` for `Servant.Api.Vault` user.
+
 # 0.2.4.0
 
 - Add GitLab provider.
