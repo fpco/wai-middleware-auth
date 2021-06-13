@@ -4,7 +4,9 @@ module Network.Wai.Middleware.Auth.OAuth2.Gitlab
     ( Gitlab(..)
     , mkGitlabProvider
     , gitlabParser
+    , gitlabEmailWhitelist
     ) where
+import           Control.Applicative                  ((<|>))
 import           Control.Exception.Safe               (catchAny)
 import           Data.Maybe                           (fromMaybe)
 import           Data.Aeson
@@ -34,11 +36,11 @@ mkGitlabProvider
   -- attached to gitlab account.
   -> Maybe ProviderInfo -- ^ Replacement for default info
   -> Gitlab
-mkGitlabProvider gitlabHost appName clientId clientSecret emailWhiteList mProviderInfo =
+mkGitlabProvider gitlabHost appName clientId clientSecret emailAllowList mProviderInfo =
   Gitlab
     appName
     ("https://" <> gitlabHost <> "/api/v4/user")
-    emailWhiteList
+    emailAllowList
     OAuth2
     { oa2ClientId = clientId
     , oa2ClientSecret = clientSecret
@@ -67,9 +69,13 @@ gitlabParser = mkProviderParser (Proxy :: Proxy Gitlab)
 data Gitlab = Gitlab
   { gitlabAppName          :: T.Text
   , gitlabAPIUserEndpoint  :: T.Text
-  , gitlabEmailWhitelist   :: [S.ByteString]
+  , gitlabEmailAllowlist   :: [S.ByteString]
   , gitlabOAuth2           :: OAuth2
   }
+
+gitlabEmailWhitelist :: Gitlab -> [S.ByteString]
+gitlabEmailWhitelist = gitlabEmailAllowlist
+{-# DEPRECATED gitlabEmailWhitelist "In favor of `gitlabEmailAllowlist`" #-}
 
 instance FromJSON Gitlab where
   parseJSON =
@@ -78,7 +84,7 @@ instance FromJSON Gitlab where
       appName <- obj .: "app_name"
       clientId <- obj .: "client_id"
       clientSecret <- obj .: "client_secret"
-      emailWhiteList <- obj .:? "email_white_list" .!= []
+      emailAllowList <- obj .: "email_allow_list" <|> obj .: "email_white_list" <|> pure []
       mProviderInfo <- obj .:? "provider_info"
       return $
         mkGitlabProvider
@@ -86,7 +92,7 @@ instance FromJSON Gitlab where
           appName
           clientId
           clientSecret
-          (map encodeUtf8 emailWhiteList)
+          (map encodeUtf8 emailAllowList)
           mProviderInfo
 
 -- | Newtype wrapper for a gitlab user
@@ -129,7 +135,7 @@ instance AuthProvider Gitlab where
                     gitlabAppName
                     gitlabAPIUserEndpoint
                     accessToken
-                let mValidEmail = getValidEmail gitlabEmailWhitelist [email]
+                let mValidEmail = getValidEmail gitlabEmailAllowlist [email]
                 case mValidEmail of
                   Just validEmail -> onSuccess validEmail
                   Nothing ->

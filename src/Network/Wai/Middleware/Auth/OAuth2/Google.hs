@@ -4,7 +4,9 @@ module Network.Wai.Middleware.Auth.OAuth2.Google
     ( Google(..)
     , mkGoogleProvider
     , googleParser
+    , googleEmailWhitelist
     ) where
+import           Control.Applicative                  ((<|>))
 import           Control.Exception.Safe               (catchAny)
 import           Control.Monad                        (guard)
 import           Data.Aeson
@@ -35,10 +37,10 @@ mkGoogleProvider
   -- attached to github account.
   -> Maybe ProviderInfo -- ^ Replacement for default info
   -> Google
-mkGoogleProvider clientId clientSecret emailWhiteList mProviderInfo =
+mkGoogleProvider clientId clientSecret emailAllowList mProviderInfo =
   Google
     "https://www.googleapis.com/oauth2/v3/userinfo"
-    emailWhiteList
+    emailAllowList
     OAuth2
     { oa2ClientId = clientId
     , oa2ClientSecret = clientSecret
@@ -65,22 +67,26 @@ googleParser = mkProviderParser (Proxy :: Proxy Google)
 
 data Google = Google
   { googleAPIEmailEndpoint :: T.Text
-  , googleEmailWhitelist   :: [S.ByteString]
+  , googleEmailAllowlist   :: [S.ByteString]
   , googleOAuth2           :: OAuth2
   }
+
+googleEmailWhitelist :: Google -> [S.ByteString]
+googleEmailWhitelist = googleEmailAllowlist
+{-# DEPRECATED googleEmailWhitelist "In favor of `googleEmailAllowlist`" #-}
 
 instance FromJSON Google where
   parseJSON =
     withObject "Google Provider Object" $ \obj -> do
       clientId <- obj .: "client_id"
       clientSecret <- obj .: "client_secret"
-      emailWhiteList <- obj .:? "email_white_list" .!= []
+      emailAllowList <- obj .: "email_allow_list" <|> obj .: "email_white_list" <|> pure []
       mProviderInfo <- obj .:? "provider_info"
       return $
         mkGoogleProvider
           clientId
           clientSecret
-          (map encodeUtf8 emailWhiteList)
+          (map encodeUtf8 emailAllowList)
           mProviderInfo
 
 
@@ -118,7 +124,7 @@ instance AuthProvider Google where
                 email <-
                   googleEmail <$>
                   retrieveEmail googleAPIEmailEndpoint accessToken
-                let mEmail = getValidEmail googleEmailWhitelist [email]
+                let mEmail = getValidEmail googleEmailAllowlist [email]
                 case mEmail of
                   Just email' -> onSuccess email'
                   Nothing ->

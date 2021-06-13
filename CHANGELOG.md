@@ -1,3 +1,7 @@
+# 0.2.6.0
+
+- Rename email list configuration to `email_allow_list`.
+
 # 0.2.5.0
 
 - Add `getAuthUserFromVault` for `Servant.Api.Vault` user.

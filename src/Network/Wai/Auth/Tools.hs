@@ -37,8 +37,8 @@ toLowerUnderscore (x:xs) = toLower x : foldr' toLowerWithUnder [] xs
       | otherwise = '_' : toLower y : acc
 
 
--- | Check email list against a whitelist and pick first one that matches or
+-- | Check email list against an allowlist and pick first one that matches or
 -- Nothing otherwise.
 getValidEmail :: [S.ByteString] -> [S.ByteString] -> Maybe S.ByteString
-getValidEmail whitelist emails =
-  listToMaybe $ filter (not . S.null) [e =~ w | e <- emails, w <- whitelist]
+getValidEmail allowlist emails =
+  listToMaybe $ filter (not . S.null) [e =~ w | e <- emails, w <- allowlist]
