@@ -21,6 +21,7 @@ module Network.Wai.Middleware.Auth
     , smartAppRoot
     , waiMiddlewareAuthVersion
     , getAuthUser
+    , getAuthUserFromVault
     , getDeleteSessionHeader
     , decodeKey
     ) where
@@ -315,6 +316,14 @@ userKey = unsafePerformIO Vault.newKey
 getAuthUser :: Request -> Maybe AuthUser
 getAuthUser = Vault.lookup userKey . vault
 
+-- | Get the username for the current user from the given Vault.
+--
+-- My be used instead of 'getAuthUser' in libraries that do not provide a
+-- 'Request' value, such as @Servant.Api.Vault@.
+--
+-- @since 0.2.5.0
+getAuthUserFromVault :: Vault.Vault -> Maybe AuthUser
+getAuthUserFromVault = Vault.lookup userKey
 
 -- | Current version
 --
