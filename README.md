@@ -39,18 +39,18 @@ providers:
     client_id: "...94cc"
     client_secret: "...166f"
     app_name: "Dev App for wai-middleware-auth"
-    email_white_list:
+    email_allow_list:
       - "^[a-zA-Z0-9._%+-]+@example.com$"
   google:
     client_id: "...qlj.apps.googleusercontent.com"
     client_secret: "...oxW"
-    email_white_list:
+    email_allow_list:
       - "^[a-zA-Z0-9._%+-]+@example.com$"
   gitlab:
     client_id: "...9cfc"
     client_secret: "...f0d0"
     app_name: "Dev App for wai-middleware-auth"
-    email_white_list:
+    email_allow_list:
       - "^[a-zA-Z0-9._%+-]+@example.com$"
 ```
 
@@ -98,7 +98,7 @@ providers:
     client_id: "...9cfc"
     client_secret: "...f0d0"
     app_name: "Dev App for wai-middleware-auth"
-    email_white_list:
+    email_allow_list:
       - "^[a-zA-Z0-9._%+-]+@mycompany.com$"
     provider_info:
       title: My Company's GitLab

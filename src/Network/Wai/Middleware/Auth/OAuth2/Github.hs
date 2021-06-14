@@ -4,7 +4,9 @@ module Network.Wai.Middleware.Auth.OAuth2.Github
     ( Github(..)
     , mkGithubProvider
     , githubParser
+    , githubEmailWhitelist
     ) where
+import           Control.Applicative                  ((<|>))
 import           Control.Exception.Safe               (catchAny)
 import           Data.Maybe                           (fromMaybe)
 import           Data.Aeson
@@ -34,11 +36,11 @@ mkGithubProvider
   -- attached to github account.
   -> Maybe ProviderInfo -- ^ Replacement for default info
   -> Github
-mkGithubProvider appName clientId clientSecret emailWhiteList mProviderInfo =
+mkGithubProvider appName clientId clientSecret emailAllowList mProviderInfo =
   Github
     appName
     "https://api.github.com/user/emails"
-    emailWhiteList
+    emailAllowList
     OAuth2
     { oa2ClientId = clientId
     , oa2ClientSecret = clientSecret
@@ -67,9 +69,13 @@ githubParser = mkProviderParser (Proxy :: Proxy Github)
 data Github = Github
   { githubAppName          :: T.Text
   , githubAPIEmailEndpoint :: T.Text
-  , githubEmailWhitelist   :: [S.ByteString]
+  , githubEmailAllowlist   :: [S.ByteString]
   , githubOAuth2           :: OAuth2
   }
+
+githubEmailWhitelist :: Github -> [S.ByteString]
+githubEmailWhitelist = githubEmailAllowlist
+{-# DEPRECATED githubEmailWhitelist "In favor of `githubEmailAllowlist`" #-}
 
 instance FromJSON Github where
   parseJSON =
@@ -77,14 +83,14 @@ instance FromJSON Github where
       appName <- obj .: "app_name"
       clientId <- obj .: "client_id"
       clientSecret <- obj .: "client_secret"
-      emailWhiteList <- obj .:? "email_white_list" .!= []
+      emailAllowList <- obj .: "email_allow_list" <|> obj .: "email_white_list" <|> pure []
       mProviderInfo <- obj .:? "provider_info"
       return $
         mkGithubProvider
           appName
           clientId
           clientSecret
-          (map encodeUtf8 emailWhiteList)
+          (map encodeUtf8 emailAllowList)
           mProviderInfo
 
 -- | Newtype wrapper for a github verified email
@@ -127,7 +133,7 @@ instance AuthProvider Github where
                     githubAppName
                     githubAPIEmailEndpoint
                     accessToken
-                let mEmail = getValidEmail githubEmailWhitelist emails
+                let mEmail = getValidEmail githubEmailAllowlist emails
                 case mEmail of
                   Just email -> onSuccess email
                   Nothing ->

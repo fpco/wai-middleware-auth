@@ -87,6 +87,7 @@ test-suite spec
   other-modules:       Network.Wai.Auth.Test
                      , Spec.Network.Wai.Auth.Internal
                      , Spec.Network.Wai.Middleware.Auth.OAuth2
+                     , Spec.Network.Wai.Middleware.Auth.OAuth2.Gitlab
                      , Spec.Network.Wai.Middleware.Auth.OIDC
   build-depends:       base
                      , aeson
