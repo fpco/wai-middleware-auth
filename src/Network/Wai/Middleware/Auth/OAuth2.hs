@@ -66,6 +66,8 @@ getClientId = id
 getClientSecret :: T.Text -> T.Text
 getClientSecret = id
 
+$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
+
 -- | Aeson parser for `OAuth2` provider.
 --
 -- @since 0.1.0
@@ -135,8 +137,6 @@ tokenExpired user now tokens =
   case OA2.expiresIn tokens of
     Nothing -> False
     Just expiresIn -> authLoginTime user + (fromIntegral expiresIn) < now
-
-$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 3} ''OAuth2)
 
 -- | Get the @AccessToken@ for the current user.
 --
