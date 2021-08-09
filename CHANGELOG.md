@@ -1,3 +1,7 @@
+# 0.2.5.1
+
+- Add support for GHC 9.0.
+
 # 0.2.5.0
 
 - Add `getAuthUserFromVault` for `Servant.Api.Vault` user.

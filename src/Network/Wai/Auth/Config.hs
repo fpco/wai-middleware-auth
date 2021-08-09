@@ -72,6 +72,9 @@ data AuthConfig = AuthConfig
   , configProviders  :: Object
   }
 
+$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 2} ''FileServer)
+
+$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 2} ''ReverseProxy)
 
 instance FromJSON AuthConfig where
   parseJSON =
@@ -100,9 +103,3 @@ instance FromJSON AuthConfig where
           (Nothing, Nothing) -> fail $ "No service is supplied. " ++ sErrMsg
       configProviders <- obj .: "providers"
       return AuthConfig {..}
-
-$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 2} ''FileServer)
-
-$(deriveJSON defaultOptions { fieldLabelModifier = toLowerUnderscore . drop 2} ''ReverseProxy)
-
-
