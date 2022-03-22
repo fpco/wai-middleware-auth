@@ -14,7 +14,7 @@ import           Data.Text.Encoding                   (encodeUtf8)
 import           Data.Yaml.Config                     (loadYamlSettings, useEnv)
 import           Network.HTTP.Client.TLS              (getGlobalManager)
 import           Network.HTTP.ReverseProxy            (ProxyDest (..),
-                                                       WaiProxyResponse (WPRProxyDest),
+                                                       WaiProxyResponse (WPRProxyDest, WPRProxyDestSecure),
                                                        defaultOnExc, waiProxyTo)
 import           Network.Wai                          (Application)
 import           Network.Wai.Application.Static       (defaultFileServerSettings,
@@ -41,13 +41,18 @@ serviceToApp (ServiceFiles FileServer {..}) = do
       { ssRedirectToIndex = fsRedirectToIndex
       , ssAddTrailingSlash = fsAddTrailingSlash
       }
-serviceToApp (ServiceProxy (ReverseProxy host port)) = do
+serviceToApp (ServiceProxy (ReverseProxy host port secure)) = do
   manager <- getGlobalManager
   return $
     waiProxyTo
-      (const $ return $ WPRProxyDest $ ProxyDest (encodeUtf8 host) port)
+      (const $ return $ proxydest $ ProxyDest (encodeUtf8 host) port)
       defaultOnExc
       manager
+  where
+    proxydest =
+      case secure of
+        Just True -> WPRProxyDestSecure
+        _         -> WPRProxyDest
 
 
 -- | Read configuration from a yaml file with ability to use environment

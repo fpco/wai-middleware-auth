@@ -42,8 +42,9 @@ data FileServer = FileServer
 
 -- | Configuration for reverse proxy application.
 data ReverseProxy = ReverseProxy
-    { rpHost :: T.Text -- ^ Hostname of the webserver
-    , rpPort :: Int -- ^ Port of the webserver
+    { rpHost   :: T.Text -- ^ Hostname of the destination webserver
+    , rpPort   :: Int -- ^ Port of the destination webserver
+    , rpSecure :: Maybe Bool -- ^ Should the request be sent to destination webbserver using https or not (default: false)
     }
 
 -- | Available services.
