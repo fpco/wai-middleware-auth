@@ -1,3 +1,7 @@
+# 0.2.6.0
+
+- Add support for https in reverse_proxy
+
 # 0.2.5.1
 
 - Add support for GHC 9.0.
