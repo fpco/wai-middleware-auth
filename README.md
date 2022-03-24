@@ -83,6 +83,7 @@ To use a reverse proxy instead of a file server, replace `file_server` with
 reverse_proxy:
   host: myapp.example.com
   port: 80
+  secure: false
 ```
 
 ### Self-hosted GitLab
