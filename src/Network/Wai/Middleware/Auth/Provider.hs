@@ -30,7 +30,7 @@ import           Control.Arrow                 (second)
 import           Data.Aeson                    (FromJSON (..), Object,
                                                 Result (..), Value)
 import           Data.Aeson.Types              (parseEither)
-
+import           Data.Aeson.KeyMap             (toHashMapText)
 import           Data.Aeson.TH                 (defaultOptions, deriveJSON,
                                                 fieldLabelModifier)
 import           Data.Aeson.Types              (Parser)
@@ -107,12 +107,12 @@ class AuthProvider ap where
 
   -- | Check if the login state in a session is still valid, and have the
   -- opportunity to update it. Return `Nothing` to indicate a session has
-  -- expired, and the user will be directed to re-authenticate. 
+  -- expired, and the user will be directed to re-authenticate.
   --
   -- The default implementation never invalidates a session once set.
   --
   -- @since 0.2.3.0
-  refreshLoginState 
+  refreshLoginState
     :: ap
     -> Request
     -> AuthUser
@@ -132,7 +132,7 @@ instance AuthProvider Provider where
 
   handleLogin (Provider p) = handleLogin p
 
-  refreshLoginState (Provider p) = refreshLoginState p 
+  refreshLoginState (Provider p) = refreshLoginState p
 
 -- | Collection of supported providers.
 type Providers = HM.HashMap T.Text Provider
@@ -184,13 +184,14 @@ mkProviderParser _ =
 
 -- | Parse configuration for providers from an `Object`.
 parseProviders :: Object -> [ProviderParser] -> Result Providers
-parseProviders unparsedProvidersHM providerParsers =
+parseProviders unparsedProvidersO providerParsers =
   if HM.null unrecognized
     then sequence $ HM.intersectionWith parseProvider unparsedProvidersHM parsersHM
     else Error $
          "Provider name(s) are not recognized: " ++
          T.unpack (T.intercalate ", " $ HM.keys unrecognized)
   where
+    unparsedProvidersHM = toHashMapText unparsedProvidersO
     parsersHM = HM.fromList providerParsers
     unrecognized = HM.difference unparsedProvidersHM parsersHM
     parseProvider v p = either Error Success $ parseEither p v
