@@ -12,6 +12,7 @@ module Network.Wai.Auth.Internal
   , refreshTokens
   ) where
 
+import           Control.Monad.Except                 (runExceptT)
 import qualified Data.Aeson                           as Aeson
 import           Data.Binary                          (Binary(get, put), encode,
                                                       decodeOrFail)
@@ -68,12 +69,12 @@ oauth2Login
   -> Manager
   -> Maybe [T.Text]
   -> T.Text
-  -> Request 
+  -> Request
   -> [T.Text]
   -> (AuthLoginState -> IO Response)
   -> (Status -> S.ByteString -> IO Response)
   -> IO Response
-oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure = 
+oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure =
   case suffix of
     [] -> do
       -- https://tools.ietf.org/html/rfc6749#section-3.3
@@ -92,7 +93,7 @@ oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure =
       let params = queryString req
       in case lookup "code" params of
             Just (Just code) -> do
-              eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
+              eRes <- runExceptT $ OA2.fetchAccessToken man oauth2 $ getExchangeToken code
               case eRes of
                 Left err    -> onFailure status501 $ S8.pack $ show err
                 Right token -> onSuccess $ encodeToken token
@@ -115,11 +116,11 @@ oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure =
     _ -> onFailure status404 "Page not found. Please continue with login."
 
 refreshTokens :: OA2.OAuth2Token -> Manager -> OA2.OAuth2 -> IO (Maybe OA2.OAuth2Token)
-refreshTokens tokens manager oauth2 = 
+refreshTokens tokens manager oauth2 =
   case OA2.refreshToken tokens of
     Nothing -> pure Nothing
     Just refreshToken -> do
-      res <- OA2.refreshAccessToken manager oauth2 refreshToken
+      res <- runExceptT $ OA2.refreshAccessToken manager oauth2 refreshToken
       case res of
         Left _ -> pure Nothing
         Right newTokens -> pure (Just newTokens)

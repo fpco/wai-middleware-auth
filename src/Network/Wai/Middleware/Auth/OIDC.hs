@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances   #-}     
-{-# LANGUAGE RecordWildCards   #-}     
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | An OpenID connect provider.
 --
@@ -163,7 +163,7 @@ instance AuthProvider OpenIDConnect where
                             authLoginTime = fromIntegral now
                           }
                     pure (Just (storeClaims claims req, newUser))
-          Just claims -> 
+          Just claims ->
             pure (Just (storeClaims claims req, user))
 
 -- | Fetch configuration for a provider from its discovery
@@ -183,7 +183,7 @@ discoverURI :: U.URI -> IO OpenIDConnect
 discoverURI uri = do
   metadata <- fetchMetadata uri
   jwkset <- fetchJWKSet (jwksUri metadata)
-  pure OpenIDConnect 
+  pure OpenIDConnect
     { oidcClientId = ""
     , oidcClientSecret = ""
     , oidcMetadata = metadata
@@ -199,23 +199,23 @@ defProviderInfo = ProviderInfo "OpenID Connect Provider" "" ""
 
 fetchMetadata :: U.URI -> IO Metadata
 fetchMetadata metadataEndpoint = do
-  req <- parseRequestThrow (S8.unpack $ U.serializeURIRef' metadataEndpoint) 
+  req <- parseRequestThrow (S8.unpack $ U.serializeURIRef' metadataEndpoint)
   getResponseBody <$> httpJSON req
 
 fetchJWKSet :: T.Text -> IO JOSE.JWKSet
 fetchJWKSet jwkSetEndpoint = do
-  req <- parseRequestThrow (T.unpack jwkSetEndpoint) 
+  req <- parseRequestThrow (T.unpack jwkSetEndpoint)
   getResponseBody <$> httpJSON req
 
 mkOauth2 :: OpenIDConnect -> Maybe (Text.Hamlet.Render ProviderUrl) -> IO OA2.OAuth2
 mkOauth2 OpenIDConnect {..} renderUrl = do
   callbackURI <- for renderUrl $ \render -> parseAbsoluteURI $ render (ProviderUrl ["complete"]) []
   pure OA2.OAuth2
-        { oauthClientId = oidcClientId
-        , oauthClientSecret = Just oidcClientSecret
-        , oauthOAuthorizeEndpoint = authorizationEndpoint oidcMetadata
-        , oauthAccessTokenEndpoint = tokenEndpoint oidcMetadata
-        , oauthCallback = callbackURI
+        { oauth2ClientId = oidcClientId
+        , oauth2ClientSecret = oidcClientSecret
+        , oauth2AuthorizeEndpoint = authorizationEndpoint oidcMetadata
+        , oauth2TokenEndpoint = tokenEndpoint oidcMetadata
+        , oauth2RedirectUri = maybe (error "No callback URI found") id callbackURI
         }
 
 validateIdToken :: OpenIDConnect -> OA2.IdToken -> IO (Either JWT.JWTError JWT.ClaimsSet)
@@ -224,7 +224,7 @@ validateIdToken oidc (OA2.IdToken idToken) = runExceptT $ do
   JWT.verifyClaims (validationSettings oidc) (oidcJwkSet oidc) signedJwt
 
 validateIdToken' :: OpenIDConnect -> OA2.OAuth2Token -> IO (Maybe JWT.ClaimsSet)
-validateIdToken' oidc tokens = 
+validateIdToken' oidc tokens =
   case OA2.idToken tokens of
     Nothing -> pure Nothing
     Just idToken ->
