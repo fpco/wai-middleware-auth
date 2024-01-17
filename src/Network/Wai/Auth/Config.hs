@@ -11,7 +11,7 @@ module Network.Wai.Auth.Config
   , decodeKey
   ) where
 
-import           Data.Aeson
+import           Data.Aeson hiding      (Key)
 import           Data.Aeson.TH          (deriveJSON)
 import qualified Data.Text              as T
 import           Data.Text.Encoding     (encodeUtf8)

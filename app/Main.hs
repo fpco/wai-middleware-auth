@@ -3,6 +3,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Main where
+
 import qualified Data.ByteString                           as S
 import           Data.Serialize                            (put, runPut)
 import           Network.Wai.Auth.Executable
@@ -100,7 +101,9 @@ main = do
           then snd <$> randomKey
           else do
             keyContent <- S.readFile keyInput
-            either error return (decodeKey keyContent <|> initKey keyContent)
+            case decodeKey keyContent of
+              Left _ -> either error return (initKey keyContent)
+              Right key -> pure key
       if null keyOutput
         then S.putStr key
         else S.writeFile keyOutput key

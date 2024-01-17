@@ -29,11 +29,10 @@ import           Blaze.ByteString.Builder      (toByteString)
 import           Control.Arrow                 (second)
 import           Data.Aeson                    (FromJSON (..), Object,
                                                 Result (..), Value)
-import           Data.Aeson.Types              (parseEither)
-
 import           Data.Aeson.TH                 (defaultOptions, deriveJSON,
                                                 fieldLabelModifier)
-import           Data.Aeson.Types              (Parser)
+import           Data.Aeson.Types              (Parser, parseEither)
+import           Data.Aeson.KeyMap             (toHashMapText)
 import           Data.Binary                   (Binary)
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Builder       as B
@@ -184,13 +183,14 @@ mkProviderParser _ =
 
 -- | Parse configuration for providers from an `Object`.
 parseProviders :: Object -> [ProviderParser] -> Result Providers
-parseProviders unparsedProvidersHM providerParsers =
+parseProviders unparsedProvidersO providerParsers =
   if HM.null unrecognized
     then sequence $ HM.intersectionWith parseProvider unparsedProvidersHM parsersHM
     else Error $
          "Provider name(s) are not recognized: " ++
          T.unpack (T.intercalate ", " $ HM.keys unrecognized)
   where
+    unparsedProvidersHM = toHashMapText unparsedProvidersO
     parsersHM = HM.fromList providerParsers
     unrecognized = HM.difference unparsedProvidersHM parsersHM
     parseProvider v p = either Error Success $ parseEither p v
