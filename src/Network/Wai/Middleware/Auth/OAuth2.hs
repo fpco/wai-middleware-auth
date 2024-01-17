@@ -14,6 +14,7 @@ import           Control.Monad.Catch
 import           Data.Aeson.TH                        (defaultOptions,
                                                        deriveJSON,
                                                        fieldLabelModifier)
+import           Data.Default                         (Default(..))
 import           Data.Functor                         ((<&>))
 import           Data.Int                             (Int64)
 import           Data.Proxy                           (Proxy (..))
@@ -83,12 +84,12 @@ instance AuthProvider OAuth2 where
     accessTokenEndpointURI <- parseAbsoluteURI oa2AccessTokenEndpoint
     callbackURI <- parseAbsoluteURI $ renderUrl (ProviderUrl ["complete"]) []
     let oauth2 =
-          OA2.OAuth2
-          { oauthClientId = getClientId oa2ClientId
-          , oauthClientSecret = Just $ getClientSecret oa2ClientSecret
-          , oauthOAuthorizeEndpoint = authEndpointURI
-          , oauthAccessTokenEndpoint = accessTokenEndpointURI
-          , oauthCallback = Just callbackURI
+          def
+          { OA2.oauth2ClientId = getClientId oa2ClientId
+          , OA2.oauth2ClientSecret = getClientSecret oa2ClientSecret
+          , OA2.oauth2AuthorizeEndpoint = authEndpointURI
+          , OA2.oauth2TokenEndpoint = accessTokenEndpointURI
+          , OA2.oauth2RedirectUri = callbackURI
           }
     man <- getGlobalManager
     oauth2Login
@@ -110,18 +111,11 @@ instance AuthProvider OAuth2 where
         CTime now <- epochTime
         if tokenExpired user now tokens then do
           let oauth2 =
-                OA2.OAuth2
-                { oauthClientId = getClientId oa2ClientId
-                , oauthClientSecret = Just (getClientSecret oa2ClientSecret)
-                , oauthOAuthorizeEndpoint = authEndpointURI
-                , oauthAccessTokenEndpoint = accessTokenEndpointURI
-                -- Setting callback endpoint to `Nothing` below is a lie.
-                -- We do have a callback endpoint but in this context
-                -- don't have access to the function that can render it.
-                -- We get away with this because the callback endpoint is
-                -- not needed for obtaining a refresh token, the only
-                -- way we use the config here constructed.
-                , oauthCallback = Nothing
+                def
+                { OA2.oauth2ClientId = getClientId oa2ClientId
+                , OA2.oauth2ClientSecret = getClientSecret oa2ClientSecret
+                , OA2.oauth2AuthorizeEndpoint = authEndpointURI
+                , OA2.oauth2TokenEndpoint = accessTokenEndpointURI
                 }
           man <- getGlobalManager
           rRes <- refreshTokens tokens man oauth2

@@ -31,7 +31,9 @@ import           Control.Monad.Except                 (runExceptT)
 import           Data.Aeson                           (FromJSON(parseJSON),
                                                        withObject, (.:), (.!=))
 import qualified Data.ByteString.Char8                as S8
+import           Data.Default                         (Default(..))
 import           Data.Function                        ((&))
+import           Data.Maybe                           (fromMaybe)
 import qualified Data.Time.Clock                      as Clock
 import           Data.Traversable                     (for)
 import qualified Data.Text                            as T
@@ -210,12 +212,12 @@ fetchJWKSet jwkSetEndpoint = do
 mkOauth2 :: OpenIDConnect -> Maybe (Text.Hamlet.Render ProviderUrl) -> IO OA2.OAuth2
 mkOauth2 OpenIDConnect {..} renderUrl = do
   callbackURI <- for renderUrl $ \render -> parseAbsoluteURI $ render (ProviderUrl ["complete"]) []
-  pure OA2.OAuth2
-        { oauthClientId = oidcClientId
-        , oauthClientSecret = Just oidcClientSecret
-        , oauthOAuthorizeEndpoint = authorizationEndpoint oidcMetadata
-        , oauthAccessTokenEndpoint = tokenEndpoint oidcMetadata
-        , oauthCallback = callbackURI
+  pure def
+        { OA2.oauth2ClientId = oidcClientId
+        , OA2.oauth2ClientSecret = oidcClientSecret
+        , OA2.oauth2AuthorizeEndpoint = authorizationEndpoint oidcMetadata
+        , OA2.oauth2TokenEndpoint = tokenEndpoint oidcMetadata
+        , OA2.oauth2RedirectUri = fromMaybe (OA2.oauth2RedirectUri def) callbackURI
         }
 
 validateIdToken :: OpenIDConnect -> OA2.IdToken -> IO (Either JWT.JWTError JWT.ClaimsSet)

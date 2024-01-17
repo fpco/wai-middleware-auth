@@ -37,6 +37,7 @@ library
                      , cereal
                      , clientsession
                      , cookie               >= 0.4.2
+                     , data-default
                      , exceptions
                      , hoauth2              >= 1.11
                      , http-client

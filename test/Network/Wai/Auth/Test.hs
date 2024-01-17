@@ -14,7 +14,6 @@ import           Data.ByteString                        (ByteString)
 import qualified Data.IORef                             as IORef
 import qualified Crypto.JOSE                            as JOSE
 import qualified Crypto.JWT                             as JWT
-import qualified Control.Monad.Except
 import qualified Data.Aeson                             as Aeson
 import           Data.Function                          ((&))
 import qualified Data.Text                              as T
@@ -139,7 +138,7 @@ fakeProvider' configRef req respond = do
 
 doJwtSign :: JOSE.JWK -> JWT.ClaimsSet -> IO T.Text
 doJwtSign jwk claims = do
-  result <- Control.Monad.Except.runExceptT $ do
+  result <- JOSE.runJOSE $ do
     alg <- JOSE.bestJWSAlg jwk
     JWT.signClaims jwk (JOSE.newJWSHeader ((), alg)) claims
   case result of

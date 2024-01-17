@@ -1,6 +1,5 @@
 {-# OPTIONS_HADDOCK hide, not-home #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 module Network.Wai.Auth.Internal
@@ -12,6 +11,8 @@ module Network.Wai.Auth.Internal
   , refreshTokens
   ) where
 
+
+import           Control.Monad.Except                 (runExceptT)
 import qualified Data.Aeson                           as Aeson
 import           Data.Binary                          (Binary(get, put), encode,
                                                       decodeOrFail)
@@ -92,7 +93,7 @@ oauth2Login oauth2 man oa2Scope providerName req suffix onSuccess onFailure =
       let params = queryString req
       in case lookup "code" params of
             Just (Just code) -> do
-              eRes <- OA2.fetchAccessToken man oauth2 $ getExchangeToken code
+              eRes <- runExceptT $ OA2.fetchAccessToken man oauth2 $ getExchangeToken code
               case eRes of
                 Left err    -> onFailure status501 $ S8.pack $ show err
                 Right token -> onSuccess $ encodeToken token
@@ -119,7 +120,7 @@ refreshTokens tokens manager oauth2 =
   case OA2.refreshToken tokens of
     Nothing -> pure Nothing
     Just refreshToken -> do
-      res <- OA2.refreshAccessToken manager oauth2 refreshToken
+      res <- runExceptT $ OA2.refreshAccessToken manager oauth2 refreshToken
       case res of
         Left _ -> pure Nothing
         Right newTokens -> pure (Just newTokens)

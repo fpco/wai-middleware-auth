@@ -11,7 +11,7 @@ import           Hedgehog
 import           Hedgehog.Gen                  as Gen
 import           Hedgehog.Range                as Range
 import           Network.Wai.Auth.Internal
-import qualified Network.OAuth.OAuth2.Internal as OA2
+import qualified Network.OAuth.OAuth2          as OA2
 
 tests :: TestTree
 tests = testGroup "Network.Wai.Auth.Internal"
